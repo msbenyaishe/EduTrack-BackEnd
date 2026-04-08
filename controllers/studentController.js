@@ -60,9 +60,8 @@ const getModules = async (req, res) => {
     const [rows] = await pool.query(
       `SELECT DISTINCT m.*, t.name AS teacher_name, g.name AS group_name, g.id AS group_id
        FROM modules m
-       JOIN module_groups mg ON mg.module_id = m.id
-       JOIN groups g ON mg.group_id = g.id
        JOIN teachers t ON m.teacher_id = t.id
+       JOIN groups g ON t.id = g.teacher_id
        JOIN group_students gs ON gs.group_id = g.id
        WHERE gs.student_id = ?
        ORDER BY m.created_at DESC`,
