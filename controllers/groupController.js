@@ -182,7 +182,30 @@ const getStudentGroups = async (req, res) => {
   }
 };
 
+// DELETE /api/groups/:id/students/:student_id (teacher removes student)
+const removeStudent = async (req, res) => {
+  const { id, student_id } = req.params;
+  try {
+    // verify teacher owns group
+    const [grp] = await pool.query(
+      "SELECT id FROM groups WHERE id = ? AND teacher_id = ?",
+      [id, req.user.id]
+    );
+    if (grp.length === 0)
+      return res.status(403).json({ message: "Unauthorized: not your group" });
+
+    const [result] = await pool.query(
+      "DELETE FROM group_students WHERE group_id = ? AND student_id = ?",
+      [id, student_id]
+    );
+    res.json({ message: "Student removed from group" });
+  } catch (err) {
+    res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
+
 module.exports = {
   createGroup, getGroups, getGroupById, updateGroup, deleteGroup,
   generateCode, getGroupStudents, joinGroup, getStudentGroups,
+  removeStudent,
 };

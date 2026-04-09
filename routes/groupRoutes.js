@@ -19,5 +19,6 @@ router.put("/:id", authenticate, requireRole("teacher"), updateGroup);
 router.delete("/:id", authenticate, requireRole("teacher"), deleteGroup);
 router.post("/:id/generate-code", authenticate, requireRole("teacher"), generateCode);
 router.get("/:id/students", authenticate, requireRole("teacher"), getGroupStudents);
+router.delete("/:id/students/:student_id", authenticate, requireRole("teacher"), removeStudent);
 
 module.exports = router;
