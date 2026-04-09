@@ -16,6 +16,6 @@ router.put("/:id", updateModule);
 router.delete("/:id", deleteModule);
 
 router.post("/assign", assignModuleToGroup);
-router.delete("/assign", removeModuleFromGroup);
+router.delete("/assign/:module_id/:group_id", removeModuleFromGroup);
 
 module.exports = router;

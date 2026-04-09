@@ -108,7 +108,7 @@ const assignModuleToGroup = async (req, res) => {
 
 // DELETE /api/modules/assign — remove module from group
 const removeModuleFromGroup = async (req, res) => {
-  const { module_id, group_id } = req.body;
+  const { module_id, group_id } = req.params;
   try {
     await pool.query(
       "DELETE FROM module_groups WHERE module_id = ? AND group_id = ?",
