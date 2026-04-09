@@ -56,14 +56,37 @@ const getGroupById = async (req, res) => {
 
 // PUT /api/groups/:id
 const updateGroup = async (req, res) => {
-  const { name, year } = req.body;
+  const { name, year, invite_expires_at } = req.body;
+  
+  // Build dynamic update query to allow partial updates
+  let query = "UPDATE groups SET ";
+  const params = [];
+  const updates = [];
+
+  if (name !== undefined) {
+    updates.push("name = ?");
+    params.push(name);
+  }
+  if (year !== undefined) {
+    updates.push("year = ?");
+    params.push(year);
+  }
+  if (invite_expires_at !== undefined) {
+    updates.push("invite_expires_at = ?");
+    params.push(invite_expires_at === "" ? null : invite_expires_at);
+  }
+
+  if (updates.length === 0) {
+    return res.status(400).json({ message: "No fields to update" });
+  }
+
+  query += updates.join(", ") + " WHERE id = ? AND teacher_id = ?";
+  params.push(req.params.id, req.user.id);
+
   try {
-    const [result] = await pool.query(
-      "UPDATE groups SET name = ?, year = ? WHERE id = ? AND teacher_id = ?",
-      [name, year, req.params.id, req.user.id]
-    );
+    const [result] = await pool.query(query, params);
     if (result.affectedRows === 0)
-      return res.status(404).json({ message: "Group not found" });
+      return res.status(404).json({ message: "Group not found or unauthorized" });
     res.json({ message: "Group updated" });
   } catch (err) {
     res.status(500).json({ message: "Server error", error: err.message });
@@ -142,7 +165,7 @@ const joinGroup = async (req, res) => {
       return res.status(404).json({ message: "Invalid invite code" });
 
     const group = rows[0];
-    if (!group.invite_expires_at || new Date(group.invite_expires_at) < new Date())
+    if (group.invite_expires_at && new Date(group.invite_expires_at) < new Date())
       return res.status(400).json({ message: "Invite code has expired" });
 
     // Check already joined
