@@ -7,7 +7,9 @@ const getClassmates = async (req, res) => {
       `SELECT s.id, s.name, s.email
        FROM students s
        JOIN group_students gs ON gs.student_id = s.id
-       WHERE gs.group_id = ?
+       JOIN groups g ON gs.group_id = g.id
+       WHERE gs.group_id = ? 
+       AND (g.invite_expires_at IS NULL OR g.invite_expires_at > NOW())
        ORDER BY s.name ASC`,
       [req.params.groupId]
     );
@@ -42,7 +44,11 @@ const createTeam = async (req, res) => {
 const getTeamsByGroup = async (req, res) => {
   try {
     const [teams] = await pool.query(
-      "SELECT * FROM agile_teams WHERE group_id = ?",
+      `SELECT at.* 
+       FROM agile_teams at
+       JOIN groups g ON at.group_id = g.id
+       WHERE at.group_id = ?
+       AND (g.invite_expires_at IS NULL OR g.invite_expires_at > NOW())`,
       [req.params.groupId]
     );
 

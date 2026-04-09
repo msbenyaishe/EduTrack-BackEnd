@@ -64,16 +64,18 @@ const updateGroup = async (req, res) => {
   const updates = [];
 
   if (name !== undefined) {
+    if (!name || name.trim() === "") return res.status(400).json({ message: "Name cannot be empty" });
     updates.push("name = ?");
     params.push(name);
   }
   if (year !== undefined) {
+    if (!year || year.toString().trim() === "") return res.status(400).json({ message: "Year cannot be empty" });
     updates.push("year = ?");
     params.push(year);
   }
   if (invite_expires_at !== undefined) {
     updates.push("invite_expires_at = ?");
-    params.push(invite_expires_at === "" ? null : invite_expires_at);
+    params.push(invite_expires_at === "" || invite_expires_at === null ? null : invite_expires_at);
   }
 
   if (updates.length === 0) {
@@ -165,8 +167,14 @@ const joinGroup = async (req, res) => {
       return res.status(404).json({ message: "Invalid invite code" });
 
     const group = rows[0];
-    if (group.invite_expires_at && new Date(group.invite_expires_at) < new Date())
-      return res.status(400).json({ message: "Invite code has expired" });
+    
+    // Check if code is expired (only if an expiration date is set)
+    if (group.invite_expires_at && new Date(group.invite_expires_at) < new Date()) {
+      return res.status(403).json({ 
+        message: "This invitation code has expired. Please ask your teacher for a new one.",
+        expired: true 
+      });
+    }
 
     // Check already joined
     const [existing] = await pool.query(
@@ -196,6 +204,7 @@ const getStudentGroups = async (req, res) => {
        JOIN group_students gs ON gs.group_id = g.id
        JOIN teachers t ON g.teacher_id = t.id
        WHERE gs.student_id = ?
+       AND (g.invite_expires_at IS NULL OR g.invite_expires_at > NOW())
        ORDER BY gs.joined_at DESC`,
       [req.user.id]
     );

@@ -97,6 +97,7 @@ const getStudentWorkshops = async (req, res) => {
        JOIN groups g ON w.group_id = g.id
        JOIN group_students gs ON gs.group_id = g.id
        WHERE gs.student_id = ?
+       AND (g.invite_expires_at IS NULL OR g.invite_expires_at > NOW())
        ORDER BY w.created_at DESC`,
       [req.user.id]
     );

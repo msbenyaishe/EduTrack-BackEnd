@@ -48,7 +48,11 @@ const joinTeam = async (req, res) => {
 const getTeamsByGroup = async (req, res) => {
   try {
     const [teams] = await pool.query(
-      "SELECT * FROM pfe_teams WHERE group_id = ?",
+      `SELECT pt.* 
+       FROM pfe_teams pt
+       JOIN groups g ON pt.group_id = g.id
+       WHERE pt.group_id = ?
+       AND (g.invite_expires_at IS NULL OR g.invite_expires_at > NOW())`,
       [req.params.groupId]
     );
 
