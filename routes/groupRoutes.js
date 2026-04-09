@@ -3,6 +3,7 @@ const router = express.Router();
 const {
   createGroup, getGroups, getGroupById, updateGroup, deleteGroup,
   generateCode, getGroupStudents, joinGroup, getStudentGroups,
+  removeStudent,
 } = require("../controllers/groupController");
 const { authenticate } = require("../middlewares/authMiddleware");
 const { requireRole } = require("../middlewares/roleMiddleware");
