@@ -25,6 +25,19 @@ const createTeam = async (req, res) => {
   if (!group_id) return res.status(400).json({ message: "group_id is required" });
 
   try {
+    // Check if student is already in a team for this group
+    const [existing] = await pool.query(
+      `SELECT sat.id 
+       FROM student_agile_teams sat
+       JOIN agile_teams at ON sat.agile_team_id = at.id
+       WHERE sat.student_id = ? AND at.group_id = ?`,
+      [req.user.id, group_id]
+    );
+
+    if (existing.length > 0) {
+      return res.status(400).json({ message: "You are already a member of an Agile team in this group." });
+    }
+
     const [result] = await pool.query(
       "INSERT INTO agile_teams (group_id, name) VALUES (?, ?)",
       [group_id, name || null]
@@ -36,6 +49,7 @@ const createTeam = async (req, res) => {
     );
     res.status(201).json({ id: result.insertId, group_id, name });
   } catch (err) {
+    console.error("Create Team Error:", err);
     res.status(500).json({ message: "Server error", error: err.message });
   }
 };
@@ -94,10 +108,47 @@ const getTeamById = async (req, res) => {
   }
 };
 
+// PUT /api/agile/teams/:teamId — rename team (student members)
+const updateTeam = async (req, res) => {
+  const { name } = req.body;
+  const { teamId } = req.params;
+  
+  if (!name) return res.status(400).json({ message: "Team name is required" });
+
+  try {
+    // Verify membership
+    const [membership] = await pool.query(
+      "SELECT id FROM student_agile_teams WHERE agile_team_id = ? AND student_id = ?",
+      [teamId, req.user.id]
+    );
+
+    if (membership.length === 0 && req.user.role !== 'teacher') {
+      return res.status(403).json({ message: "Only team members or teachers can rename the team." });
+    }
+
+    await pool.query("UPDATE agile_teams SET name = ? WHERE id = ?", [name, teamId]);
+    res.json({ message: "Team renamed successfully" });
+  } catch (err) {
+    res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
+
 // DELETE /api/agile/teams/:teamId
 const deleteTeam = async (req, res) => {
+  const { teamId } = req.params;
   try {
-    await pool.query("DELETE FROM agile_teams WHERE id = ?", [req.params.teamId]);
+    // Verify membership or teacher role
+    if (req.user.role !== 'teacher') {
+      const [membership] = await pool.query(
+        "SELECT id FROM student_agile_teams WHERE agile_team_id = ? AND student_id = ?",
+        [teamId, req.user.id]
+      );
+      if (membership.length === 0) {
+        return res.status(403).json({ message: "Only team members or teachers can delete this team." });
+      }
+    }
+
+    await pool.query("DELETE FROM agile_teams WHERE id = ?", [teamId]);
     res.json({ message: "Team deleted" });
   } catch (err) {
     res.status(500).json({ message: "Server error", error: err.message });
@@ -110,6 +161,22 @@ const joinTeam = async (req, res) => {
   if (!team_id) return res.status(400).json({ message: "team_id is required" });
 
   try {
+    // Check if student is already in a team for the SAME group as this team
+    const [teamInfo] = await pool.query("SELECT group_id FROM agile_teams WHERE id = ?", [team_id]);
+    if (teamInfo.length === 0) return res.status(404).json({ message: "Team not found" });
+
+    const [existingInGroup] = await pool.query(
+      `SELECT sat.id 
+       FROM student_agile_teams sat
+       JOIN agile_teams at ON sat.agile_team_id = at.id
+       WHERE sat.student_id = ? AND at.group_id = ?`,
+      [req.user.id, teamInfo[0].group_id]
+    );
+
+    if (existingInGroup.length > 0) {
+      return res.status(400).json({ message: "You are already a member of an Agile team in this group." });
+    }
+
     const [existing] = await pool.query(
       "SELECT id FROM student_agile_teams WHERE agile_team_id = ? AND student_id = ?",
       [team_id, req.user.id]
@@ -127,4 +194,4 @@ const joinTeam = async (req, res) => {
   }
 };
 
-module.exports = { getClassmates, createTeam, getTeamsByGroup, getTeamById, deleteTeam, joinTeam };
+module.exports = { getClassmates, createTeam, getTeamsByGroup, getTeamById, deleteTeam, joinTeam, updateTeam };

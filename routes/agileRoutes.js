@@ -12,8 +12,9 @@ router.use(authenticate);
 router.get("/students/:groupId", getClassmates);                          // both roles
 router.post("/teams", requireRole("student"), createTeam);
 router.post("/teams/join", requireRole("student"), joinTeam);
+router.put("/teams/:teamId", requireRole("student"), updateTeam);
 router.get("/teams/:groupId", getTeamsByGroup);                           // both roles
 router.get("/teams/team/:teamId", getTeamById);                           // both roles
-router.delete("/teams/:teamId", requireRole("teacher"), deleteTeam);
+router.delete("/teams/:teamId", deleteTeam);                              // both roles (internal check)
 
 module.exports = router;
