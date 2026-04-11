@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const {
-  getClassmates, createTeam, getTeamsByGroup, getTeamById, deleteTeam, joinTeam, updateTeam,
+  getClassmates, createTeam, getTeamsByGroup, getTeamById, deleteTeam, joinTeam, updateTeam, addMember, removeMember,
 } = require("../controllers/agileController");
 const { authenticate } = require("../middlewares/authMiddleware");
 const { requireRole } = require("../middlewares/roleMiddleware");
