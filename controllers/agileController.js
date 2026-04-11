@@ -194,4 +194,74 @@ const joinTeam = async (req, res) => {
   }
 };
 
-module.exports = { getClassmates, createTeam, getTeamsByGroup, getTeamById, deleteTeam, joinTeam, updateTeam };
+// POST /api/agile/teams/member — add a member to a team (by a member)
+const addMember = async (req, res) => {
+  const { team_id, student_id } = req.body;
+  if (!team_id || !student_id) return res.status(400).json({ message: "team_id and student_id are required" });
+
+  try {
+    // 1. Verify requester is a member or teacher
+    if (req.user.role !== 'teacher') {
+      const [membership] = await pool.query(
+        "SELECT id FROM student_agile_teams WHERE agile_team_id = ? AND student_id = ?",
+        [team_id, req.user.id]
+      );
+      if (membership.length === 0) {
+        return res.status(403).json({ message: "Only team members or teachers can add members." });
+      }
+    }
+
+    // 2. Check if target student is already in a team for this group
+    const [teamInfo] = await pool.query("SELECT group_id FROM agile_teams WHERE id = ?", [team_id]);
+    if (teamInfo.length === 0) return res.status(404).json({ message: "Team not found" });
+
+    const [existing] = await pool.query(
+      `SELECT sat.id FROM student_agile_teams sat
+       JOIN agile_teams at ON sat.agile_team_id = at.id
+       WHERE sat.student_id = ? AND at.group_id = ?`,
+      [student_id, teamInfo[0].group_id]
+    );
+
+    if (existing.length > 0) {
+      return res.status(400).json({ message: "This student is already a member of an Agile team in this group." });
+    }
+
+    // 3. Add member
+    await pool.query(
+      "INSERT INTO student_agile_teams (agile_team_id, student_id) VALUES (?, ?)",
+      [team_id, student_id]
+    );
+    res.status(201).json({ message: "Member added successfully" });
+  } catch (err) {
+    res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
+
+// DELETE /api/agile/teams/member/:teamId/:studentId — remove a member
+const removeMember = async (req, res) => {
+  const { teamId, studentId } = req.params;
+
+  try {
+    // 1. Verify requester is a member or teacher
+    if (req.user.role !== 'teacher') {
+      const [membership] = await pool.query(
+        "SELECT id FROM student_agile_teams WHERE agile_team_id = ? AND student_id = ?",
+        [teamId, req.user.id]
+      );
+      if (membership.length === 0) {
+        return res.status(403).json({ message: "Only team members or teachers can remove members." });
+      }
+    }
+
+    // 2. Remove member
+    await pool.query(
+      "DELETE FROM student_agile_teams WHERE agile_team_id = ? AND student_id = ?",
+      [teamId, studentId]
+    );
+    res.json({ message: "Member removed successfully" });
+  } catch (err) {
+    res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
+
+module.exports = { getClassmates, createTeam, getTeamsByGroup, getTeamById, deleteTeam, joinTeam, updateTeam, addMember, removeMember };

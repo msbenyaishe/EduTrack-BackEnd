@@ -15,6 +15,8 @@ router.post("/teams/join", requireRole("student"), joinTeam);
 router.put("/teams/:teamId", updateTeam);
 router.get("/teams/:groupId", getTeamsByGroup);                           // both roles
 router.get("/teams/team/:teamId", getTeamById);                           // both roles
+router.post("/teams/member", addMember);                                  // member/teacher check in controller
+router.delete("/teams/member/:teamId/:studentId", removeMember);          // member/teacher check in controller
 router.delete("/teams/:teamId", deleteTeam);                              // both roles (internal check)
 
 module.exports = router;
