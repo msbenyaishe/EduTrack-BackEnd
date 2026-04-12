@@ -199,7 +199,7 @@ const joinGroup = async (req, res) => {
 const getStudentGroups = async (req, res) => {
   try {
     const [rows] = await pool.query(
-      `SELECT g.*, t.name AS teacher_name, t.email AS teacher_email
+      `SELECT g.*, gs.joined_at, t.name AS teacher_name, t.email AS teacher_email
        FROM groups g
        JOIN group_students gs ON gs.group_id = g.id
        JOIN teachers t ON g.teacher_id = t.id
