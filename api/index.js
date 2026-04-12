@@ -9,16 +9,20 @@ app.use(cors());
 app.use(express.json());
 
 // ── Routes ─────────────────────────────────────────────────────────────────────
-app.use("/api/auth",         require("../routes/authRoutes"));
-app.use("/api/teachers",     require("../routes/teacherRoutes"));
-app.use("/api/students",     require("../routes/studentRoutes"));
-app.use("/api/modules",      require("../routes/moduleRoutes"));
-app.use("/api/groups",       require("../routes/groupRoutes"));
-app.use("/api/workshops",    require("../routes/workshopRoutes"));
-app.use("/api/agile",        require("../routes/agileRoutes"));
-app.use("/api/sprints",      require("../routes/sprintRoutes"));
-app.use("/api/pfe",          require("../routes/pfeRoutes"));
-app.use("/api/internships",  require("../routes/internshipRoutes"));
+const mainRouter = express.Router();
+mainRouter.use("/auth",         require("../routes/authRoutes"));
+mainRouter.use("/teachers",     require("../routes/teacherRoutes"));
+mainRouter.use("/students",     require("../routes/studentRoutes"));
+mainRouter.use("/modules",      require("../routes/moduleRoutes"));
+mainRouter.use("/groups",       require("../routes/groupRoutes"));
+mainRouter.use("/workshops",    require("../routes/workshopRoutes"));
+mainRouter.use("/agile",        require("../routes/agileRoutes"));
+mainRouter.use("/sprints",      require("../routes/sprintRoutes"));
+mainRouter.use("/pfe",          require("../routes/pfeRoutes"));
+mainRouter.use("/internships",  require("../routes/internshipRoutes"));
+
+app.use("/api", mainRouter);
+app.use(mainRouter); // Fallback for environments where /api is stripped or not used
 
 // ── Health check ───────────────────────────────────────────────────────────────
 app.get("/", (req, res) => {
