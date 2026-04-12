@@ -90,7 +90,7 @@ const deleteWorkshop = async (req, res) => {
 const getStudentWorkshops = async (req, res) => {
   try {
     const [rows] = await pool.query(
-      `SELECT w.*, m.title AS module_title, t.name AS teacher_name, g.name AS group_name
+      `SELECT w.*, m.title AS module, t.name AS teacher, g.name AS group_name
        FROM workshops w
        JOIN modules m ON w.module_id = m.id
        JOIN teachers t ON m.teacher_id = t.id
