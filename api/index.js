@@ -1,12 +1,17 @@
 const express = require("express");
 const cors = require("cors");
 require("dotenv").config();
+const { ensureSubmissionReactionColumns } = require("../utils/ensureSubmissionReactionColumns");
 
 const app = express();
 
 // ── Middleware ─────────────────────────────────────────────────────────────────
 app.use(cors());
 app.use(express.json());
+
+ensureSubmissionReactionColumns().catch((err) => {
+  console.error("Failed to ensure submission reaction columns:", err.message);
+});
 
 // ── Routes ─────────────────────────────────────────────────────────────────────
 const mainRouter = express.Router();
