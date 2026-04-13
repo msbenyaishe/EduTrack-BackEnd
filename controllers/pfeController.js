@@ -93,9 +93,16 @@ const submitPFE = async (req, res) => {
       "SELECT id FROM pfe_submissions WHERE pfe_team_id = ?",
       [pfe_team_id]
     );
-    if (existing.length > 0)
-      return res.status(409).json({ message: "PFE already submitted for this team" });
-
+    if (existing.length > 0) {
+      await pool.query(
+        `UPDATE pfe_submissions 
+         SET project_title = ?, description = ?, project_repo = ?, project_demo = ?, explanation_video = ?, report_pdf = ?
+         WHERE pfe_team_id = ?`,
+        [project_title || null, description || null, project_repo || null, project_demo || null, explanation_video || null, report_pdf || null, pfe_team_id]
+      );
+      return res.json({ message: "PFE submission updated" });
+    }
+    
     const [result] = await pool.query(
       `INSERT INTO pfe_submissions
          (pfe_team_id, project_title, description, project_repo, project_demo, explanation_video, report_pdf)
