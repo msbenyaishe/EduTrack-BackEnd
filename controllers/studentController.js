@@ -91,9 +91,10 @@ const getSubmissions = async (req, res) => {
     );
 
     const [sprintSubs] = await pool.query(
-      `SELECT ss.*, ss.reaction AS teacher_reaction, sp.title AS sprint_title, at.name AS team_name, g.name AS group_name
+      `SELECT ss.*, ss.reaction AS teacher_reaction, sp.title AS sprint_title, m.title AS module_title, at.name AS team_name, g.name AS group_name
        FROM sprint_submissions ss
        JOIN sprints sp ON ss.sprint_id = sp.id
+       JOIN modules m ON sp.module_id = m.id
        JOIN agile_teams at ON ss.agile_team_id = at.id
        JOIN groups g ON sp.group_id = g.id
        JOIN student_agile_teams sat ON sat.agile_team_id = at.id
