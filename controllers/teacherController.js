@@ -192,6 +192,72 @@ const updateSubmissionReaction = async (req, res) => {
   }
 };
 
+// DELETE /api/teachers/submissions
+const deleteSubmission = async (req, res) => {
+  const payloadKeys = Object.keys(req.body || {});
+  const { submissionType, submissionId } = req.body || {};
+
+  if (
+    payloadKeys.length !== 2 ||
+    !ALLOWED_SUBMISSION_TYPES.has(submissionType) ||
+    !Number.isInteger(submissionId)
+  ) {
+    return res.status(400).json({
+      message: "Invalid payload. Expected { submissionType, submissionId } with allowed values.",
+    });
+  }
+
+  try {
+    const teacherId = req.user.id;
+    const typeConfig = {
+      workshop: {
+        table: "workshop_submissions",
+        existenceQuery: "SELECT id FROM workshop_submissions WHERE id = ?",
+        authorizationQuery: `SELECT ws.id
+          FROM workshop_submissions ws
+          JOIN workshops w ON ws.workshop_id = w.id
+          JOIN modules m ON w.module_id = m.id
+          WHERE ws.id = ? AND m.teacher_id = ?`,
+      },
+      sprint: {
+        table: "sprint_submissions",
+        existenceQuery: "SELECT id FROM sprint_submissions WHERE id = ?",
+        authorizationQuery: `SELECT ss.id
+          FROM sprint_submissions ss
+          JOIN sprints sp ON ss.sprint_id = sp.id
+          JOIN modules m ON sp.module_id = m.id
+          WHERE ss.id = ? AND m.teacher_id = ?`,
+      },
+      pfe: {
+        table: "pfe_submissions",
+        existenceQuery: "SELECT id FROM pfe_submissions WHERE id = ?",
+        authorizationQuery: `SELECT ps.id
+          FROM pfe_submissions ps
+          JOIN pfe_teams pt ON ps.pfe_team_id = pt.id
+          JOIN groups g ON pt.group_id = g.id
+          WHERE ps.id = ? AND g.teacher_id = ?`,
+      },
+    };
+
+    const config = typeConfig[submissionType];
+
+    const [existingRows] = await pool.query(config.existenceQuery, [submissionId]);
+    if (existingRows.length === 0) {
+      return res.status(404).json({ message: "Submission not found" });
+    }
+
+    const [authorizedRows] = await pool.query(config.authorizationQuery, [submissionId, teacherId]);
+    if (authorizedRows.length === 0) {
+      return res.status(403).json({ message: "Unauthorized to delete this submission" });
+    }
+
+    await pool.query(`DELETE FROM ${config.table} WHERE id = ?`, [submissionId]);
+    return res.json({ success: true, message: "Submission deleted" });
+  } catch (err) {
+    return res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
+
 module.exports = {
   getProfile,
   updateProfile,
@@ -199,4 +265,5 @@ module.exports = {
   getModules,
   getSubmissionsDashboard,
   updateSubmissionReaction,
+  deleteSubmission,
 };

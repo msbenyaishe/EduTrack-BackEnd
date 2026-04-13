@@ -7,6 +7,7 @@ const {
   getModules,
   getSubmissionsDashboard,
   updateSubmissionReaction,
+  deleteSubmission,
 } = require("../controllers/teacherController");
 const { authenticate } = require("../middlewares/authMiddleware");
 const { requireRole } = require("../middlewares/roleMiddleware");
@@ -18,6 +19,7 @@ router.put("/me", updateProfile);
 router.get("/groups", getGroups);
 router.get("/modules", getModules);
 router.get("/submissions", getSubmissionsDashboard);
+router.delete("/submissions", deleteSubmission);
 router.patch("/submissions/reaction", updateSubmissionReaction);
 
 module.exports = router;
