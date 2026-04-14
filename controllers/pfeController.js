@@ -51,8 +51,7 @@ const getTeamsByGroup = async (req, res) => {
       `SELECT pt.* 
        FROM pfe_teams pt
        JOIN groups g ON pt.group_id = g.id
-       WHERE pt.group_id = ?
-       AND (g.invite_expires_at IS NULL OR g.invite_expires_at > NOW())`,
+       WHERE pt.group_id = ?`,
       [req.params.groupId]
     );
 

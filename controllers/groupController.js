@@ -204,7 +204,6 @@ const getStudentGroups = async (req, res) => {
        JOIN group_students gs ON gs.group_id = g.id
        JOIN teachers t ON g.teacher_id = t.id
        WHERE gs.student_id = ?
-       AND (g.invite_expires_at IS NULL OR g.invite_expires_at > NOW())
        ORDER BY gs.joined_at DESC`,
       [req.user.id]
     );

@@ -9,7 +9,6 @@ const getClassmates = async (req, res) => {
        JOIN group_students gs ON gs.student_id = s.id
        JOIN groups g ON gs.group_id = g.id
        WHERE gs.group_id = ? 
-       AND (g.invite_expires_at IS NULL OR g.invite_expires_at > NOW())
        ORDER BY s.name ASC`,
       [req.params.groupId]
     );
@@ -61,8 +60,7 @@ const getTeamsByGroup = async (req, res) => {
       `SELECT at.* 
        FROM agile_teams at
        JOIN groups g ON at.group_id = g.id
-       WHERE at.group_id = ?
-       AND (g.invite_expires_at IS NULL OR g.invite_expires_at > NOW())`,
+       WHERE at.group_id = ?`,
       [req.params.groupId]
     );
 
