@@ -111,6 +111,40 @@ const updateInternship = async (req, res) => {
   }
 };
 
+// DELETE /api/internships/:id  (student)
+const deleteInternship = async (req, res) => {
+  const internshipId = Number.parseInt(req.params.id, 10);
+
+  if (!Number.isInteger(internshipId) || internshipId <= 0) {
+    return res.status(400).json({
+      message: "Invalid internship id",
+      errors: { id: "id must be a valid integer" },
+    });
+  }
+
+  try {
+    const [existingRows] = await pool.query(
+      "SELECT id, student_id FROM internships WHERE id = ?",
+      [internshipId]
+    );
+    if (existingRows.length === 0) {
+      return res.status(404).json({ message: "Internship not found" });
+    }
+    if (existingRows[0].student_id !== req.user.id) {
+      return res.status(403).json({ message: "Unauthorized to delete this internship" });
+    }
+
+    await pool.query("DELETE FROM internships WHERE id = ?", [internshipId]);
+
+    return res.json({
+      success: true,
+      message: "Internship deleted successfully",
+    });
+  } catch (err) {
+    return res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
+
 // GET /api/internships/group/:groupId  (teacher)
 const getInternshipsByGroup = async (req, res) => {
   try {
@@ -129,4 +163,4 @@ const getInternshipsByGroup = async (req, res) => {
   }
 };
 
-module.exports = { submitInternship, getMyInternship, updateInternship, getInternshipsByGroup };
+module.exports = { submitInternship, getMyInternship, updateInternship, deleteInternship, getInternshipsByGroup };
