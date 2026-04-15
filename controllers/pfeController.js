@@ -5,6 +5,7 @@ const createTeam = async (req, res) => {
   const { group_id, name } = req.body;
   if (!group_id) return res.status(400).json({ message: "group_id is required" });
 
+  try {
     // Ensure created_by column exists (graceful migration)
     try {
       await pool.query("ALTER TABLE pfe_teams ADD COLUMN created_by INT;");
