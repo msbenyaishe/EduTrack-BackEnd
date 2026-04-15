@@ -18,7 +18,19 @@ const createModule = async (req, res) => {
 
 // GET /api/modules
 const getModules = async (req, res) => {
+  const { group_id } = req.query;
   try {
+    if (group_id) {
+      const [rows] = await pool.query(
+        `SELECT m.* FROM modules m
+         JOIN module_groups mg ON mg.module_id = m.id
+         WHERE mg.group_id = ? AND m.teacher_id = ?
+         ORDER BY m.created_at DESC`,
+        [group_id, req.user.id]
+      );
+      return res.json(rows);
+    }
+
     const [rows] = await pool.query(
       "SELECT * FROM modules WHERE teacher_id = ? ORDER BY created_at DESC",
       [req.user.id]

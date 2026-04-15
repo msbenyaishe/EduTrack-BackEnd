@@ -55,15 +55,16 @@ const getGroups = async (req, res) => {
   }
 };
 
-// GET /api/students/modules — modules per teacher for the student's groups
+// GET /api/students/modules — modules assigned to the student's groups
 const getModules = async (req, res) => {
   try {
     const [rows] = await pool.query(
       `SELECT DISTINCT m.*, t.name AS teacher_name, g.name AS group_name, g.id AS group_id
        FROM modules m
        JOIN teachers t ON m.teacher_id = t.id
-       JOIN groups g ON t.id = g.teacher_id
-       JOIN group_students gs ON gs.group_id = g.id
+       JOIN module_groups mg ON mg.module_id = m.id
+       JOIN group_students gs ON gs.group_id = mg.group_id
+       JOIN groups g ON g.id = mg.group_id
        WHERE gs.student_id = ?
        ORDER BY m.created_at DESC`,
       [req.user.id]
