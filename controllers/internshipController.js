@@ -39,7 +39,7 @@ const getMyInternship = async (req, res) => {
 
 // PUT /api/internships/:id  (student)
 const updateInternship = async (req, res) => {
-  const { company_name, supervisor_name, start_date, end_date } = req.body || {};
+  const { company_name, supervisor_name, start_date, end_date, report_pdf } = req.body || {};
   const internshipId = Number.parseInt(req.params.id, 10);
   const errors = {};
 
@@ -87,15 +87,15 @@ const updateInternship = async (req, res) => {
 
     const [result] = await pool.query(
       `UPDATE internships
-       SET company_name = ?, supervisor_name = ?, start_date = ?, end_date = ?
+       SET company_name = ?, supervisor_name = ?, start_date = ?, end_date = ?, report_pdf = ?
        WHERE id = ?`,
-      [company_name.trim(), supervisor_name.trim(), start_date, end_date, internshipId]
+      [company_name.trim(), supervisor_name.trim(), start_date, end_date, report_pdf || null, internshipId]
     );
     if (result.affectedRows === 0)
       return res.status(404).json({ message: "Internship not found" });
 
     const [updatedRows] = await pool.query(
-      `SELECT id, company_name, supervisor_name, start_date, end_date
+      `SELECT id, company_name, supervisor_name, start_date, end_date, report_pdf
        FROM internships
        WHERE id = ?`,
       [internshipId]
