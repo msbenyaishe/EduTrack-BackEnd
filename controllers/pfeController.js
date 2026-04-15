@@ -81,8 +81,44 @@ const getTeamsByGroup = async (req, res) => {
 // DELETE /api/pfe/teams/:teamId
 const deleteTeam = async (req, res) => {
   try {
+    // Verify membership or teacher role
+    if (req.user.role !== 'teacher') {
+      const [membership] = await pool.query(
+        "SELECT id FROM student_pfe_teams WHERE pfe_team_id = ? AND student_id = ?",
+        [req.params.teamId, req.user.id]
+      );
+      if (membership.length === 0) {
+        return res.status(403).json({ message: "Only team members or teachers can delete this team." });
+      }
+    }
+
     await pool.query("DELETE FROM pfe_teams WHERE id = ?", [req.params.teamId]);
     res.json({ message: "PFE team deleted" });
+  } catch (err) {
+    res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
+
+// PUT /api/pfe/teams/:teamId — rename team (student members)
+const updateTeam = async (req, res) => {
+  const { name } = req.body;
+  const { teamId } = req.params;
+  
+  if (!name) return res.status(400).json({ message: "Team name is required" });
+
+  try {
+    // Verify membership
+    const [membership] = await pool.query(
+      "SELECT id FROM student_pfe_teams WHERE pfe_team_id = ? AND student_id = ?",
+      [teamId, req.user.id]
+    );
+
+    if (membership.length === 0 && req.user.role !== 'teacher') {
+      return res.status(403).json({ message: "Only team members or teachers can rename the team." });
+    }
+
+    await pool.query("UPDATE pfe_teams SET name = ? WHERE id = ?", [name, teamId]);
+    res.json({ message: "Team renamed successfully" });
   } catch (err) {
     res.status(500).json({ message: "Server error", error: err.message });
   }
@@ -151,25 +187,68 @@ const getSubmissionByTeam = async (req, res) => {
   }
 };
 
+// POST /api/pfe/teams/members — add a member (by a member)
+const addMember = async (req, res) => {
+  const { team_id, student_id } = req.body;
+  if (!team_id || !student_id) return res.status(400).json({ message: "team_id and student_id are required" });
+
+  try {
+    // 1. Verify requester is a member or teacher
+    if (req.user.role !== 'teacher') {
+      const [membership] = await pool.query(
+        "SELECT id FROM student_pfe_teams WHERE pfe_team_id = ? AND student_id = ?",
+        [team_id, req.user.id]
+      );
+      if (membership.length === 0) {
+        return res.status(403).json({ message: "Only team members or teachers can add members." });
+      }
+    }
+
+    // 2. Check if target student is already in a PFE team for this group
+    const [teamInfo] = await pool.query("SELECT group_id FROM pfe_teams WHERE id = ?", [team_id]);
+    if (teamInfo.length === 0) return res.status(404).json({ message: "Team not found" });
+
+    const [existing] = await pool.query(
+      `SELECT spt.id FROM student_pfe_teams spt
+       JOIN pfe_teams pt ON spt.pfe_team_id = pt.id
+       WHERE spt.student_id = ? AND pt.group_id = ?`,
+      [student_id, teamInfo[0].group_id]
+    );
+
+    if (existing.length > 0) {
+      return res.status(400).json({ message: "This student is already a member of a PFE team in this group." });
+    }
+
+    // 3. Add member
+    await pool.query(
+      "INSERT INTO student_pfe_teams (pfe_team_id, student_id) VALUES (?, ?)",
+      [team_id, student_id]
+    );
+    res.status(201).json({ message: "Member added successfully" });
+  } catch (err) {
+    res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
+
 // DELETE /api/pfe/teams/:teamId/members/:studentId
 const removeMember = async (req, res) => {
   const { teamId, studentId } = req.params;
 
   try {
-    // 1. Verify requester is the creator or a teacher
+    // 1. Verify requester is a member or teacher
     if (req.user.role !== 'teacher') {
-      const [team] = await pool.query("SELECT created_by FROM pfe_teams WHERE id = ?", [teamId]);
-      if (team.length === 0) return res.status(404).json({ message: "Team not found" });
-
-      if (team[0].created_by !== req.user.id) {
-        return res.status(403).json({ message: "Only the team creator or a teacher can remove members." });
-      }
-
-      // 2. Prevent removing the creator themselves (they should delete the team instead if they want to leave)
-      if (Number(studentId) === req.user.id) {
-        return res.status(400).json({ message: "You cannot remove yourself from the team. Use delete team instead." });
+      const [membership] = await pool.query(
+        "SELECT id FROM student_pfe_teams WHERE pfe_team_id = ? AND student_id = ?",
+        [teamId, req.user.id]
+      );
+      if (membership.length === 0) {
+        return res.status(403).json({ message: "Only team members or teachers can remove members." });
       }
     }
+
+    // 2. Prevent removing the creator (if we want to be strict)
+    // Actually, Agile logic allows any member to remove ANY member.
+    // If we want to strictly follow Agile, we don't need additional creator checks here.
 
     // 3. Remove from junction table
     await pool.query(
@@ -183,6 +262,6 @@ const removeMember = async (req, res) => {
 };
 
 module.exports = {
-  createTeam, joinTeam, getTeamsByGroup, deleteTeam,
+  createTeam, joinTeam, getTeamsByGroup, deleteTeam, updateTeam, addMember,
   submitPFE, getSubmissionsByGroup, getSubmissionByTeam, removeMember
 };

@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const {
-  createTeam, joinTeam, getTeamsByGroup, deleteTeam,
+  createTeam, joinTeam, getTeamsByGroup, deleteTeam, updateTeam, addMember,
   submitPFE, getSubmissionsByGroup, getSubmissionByTeam, removeMember
 } = require("../controllers/pfeController");
 const { authenticate } = require("../middlewares/authMiddleware");
@@ -21,8 +21,8 @@ router.delete("/teams/:teamId/members/:studentId", requireRole("student"), remov
 
 // Both
 router.get("/teams/:groupId", getTeamsByGroup);
-
-// Teacher
-router.delete("/teams/:teamId", requireRole("teacher"), deleteTeam);
+router.delete("/teams/:teamId", deleteTeam);
+router.put("/teams/:teamId", updateTeam);
+router.post("/teams/members", addMember);
 
 module.exports = router;
