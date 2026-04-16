@@ -95,17 +95,26 @@ const submitSprint = async (req, res) => {
       "SELECT id FROM sprint_submissions WHERE sprint_id = ? AND agile_team_id = ?",
       [req.params.id, agile_team_id]
     );
-    if (existing.length > 0)
-      return res.status(409).json({ message: "Already submitted" });
 
+    if (existing.length > 0) {
+      // Allow modifying existing submission
+      await pool.query(
+        `UPDATE sprint_submissions SET pdf_report = ?, repo = ?, web_page = ?, submitted_at = NOW()
+         WHERE id = ?`,
+        [pdf_report || null, repo || null, web_page || null, existing[0].id]
+      );
+      return res.json({ message: "Sprint submission updated successfully!" });
+    }
+
+    // New submission
     const [result] = await pool.query(
       `INSERT INTO sprint_submissions (sprint_id, agile_team_id, pdf_report, repo, web_page)
        VALUES (?, ?, ?, ?, ?)`,
       [req.params.id, agile_team_id, pdf_report || null, repo || null, web_page || null]
     );
-    res.status(201).json({ id: result.insertId, message: "Sprint submitted" });
+    res.status(201).json({ id: result.insertId, message: "Sprint submitted successfully!" });
   } catch (err) {
-    res.status(500).json({ message: "Server error", error: err.message });
+    res.status(500).json({ message: "Server error occurred while saving your sprint submission.", error: err.message });
   }
 };
 
