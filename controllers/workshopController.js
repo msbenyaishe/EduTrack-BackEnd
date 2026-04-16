@@ -90,19 +90,25 @@ const deleteWorkshop = async (req, res) => {
 const getStudentWorkshops = async (req, res) => {
   try {
     const [rows] = await pool.query(
-      `SELECT w.*, m.title AS module, t.name AS teacher, g.name AS group_name
+      `SELECT w.*, m.title AS module, t.name AS teacher, g.name AS group_name,
+              ws.id AS submission_id,
+              IF(ws.id IS NOT NULL, 1, 0) AS submitted,
+              ws.repo AS submitted_repo,
+              ws.web_page AS submitted_web_page,
+              ws.pdf_report AS submitted_pdf_report
        FROM workshops w
        JOIN modules m ON w.module_id = m.id
        JOIN teachers t ON m.teacher_id = t.id
        JOIN groups g ON w.group_id = g.id
        JOIN group_students gs ON gs.group_id = g.id
+       LEFT JOIN workshop_submissions ws ON ws.workshop_id = w.id AND ws.student_id = ?
        WHERE gs.student_id = ?
        ORDER BY w.created_at DESC`,
-      [req.user.id]
+      [req.user.id, req.user.id]
     );
     res.json(rows);
   } catch (err) {
-    res.status(500).json({ message: "Server error", error: err.message });
+    res.status(500).json({ message: "Server error occurred while fetching workshops.", error: err.message });
   }
 };
 
@@ -111,23 +117,36 @@ const submitWorkshop = async (req, res) => {
   const { repo, web_page, pdf_report } = req.body;
   const workshopId = req.params.id;
 
+  if (!repo && !web_page && !pdf_report) {
+    return res.status(400).json({ message: "At least one submission field (Repo, Link, or PDF) is required." });
+  }
+
   try {
-    // Check already submitted
+    // Check if already submitted
     const [existing] = await pool.query(
       "SELECT id FROM workshop_submissions WHERE workshop_id = ? AND student_id = ?",
       [workshopId, req.user.id]
     );
-    if (existing.length > 0)
-      return res.status(409).json({ message: "Already submitted" });
 
+    if (existing.length > 0) {
+      // Allow modifying existing submission
+      await pool.query(
+        `UPDATE workshop_submissions SET pdf_report = ?, repo = ?, web_page = ?, submitted_at = NOW()
+         WHERE id = ?`,
+        [pdf_report || null, repo || null, web_page || null, existing[0].id]
+      );
+      return res.json({ message: "Workshop submission updated successfully!" });
+    }
+
+    // New submission
     const [result] = await pool.query(
       `INSERT INTO workshop_submissions (workshop_id, student_id, pdf_report, repo, web_page)
        VALUES (?, ?, ?, ?, ?)`,
       [workshopId, req.user.id, pdf_report || null, repo || null, web_page || null]
     );
-    res.status(201).json({ id: result.insertId, message: "Workshop submitted" });
+    res.status(201).json({ id: result.insertId, message: "Workshop submitted successfully!" });
   } catch (err) {
-    res.status(500).json({ message: "Server error", error: err.message });
+    res.status(500).json({ message: "Server error occurred while saving your submission.", error: err.message });
   }
 };
 
