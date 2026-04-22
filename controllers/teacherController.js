@@ -72,7 +72,7 @@ const getSubmissionsDashboard = async (req, res) => {
     // Workshop submissions across teacher's workshops
     const [workshopSubs] = await pool.query(
       `SELECT ws.*, ws.reaction AS teacher_reaction, w.title AS workshop_title, s.name AS student_name, s.email AS student_email,
-              g.name AS group_name, m.title AS module_title
+              g.name AS group_name, g.year AS group_year, m.title AS module_title
        FROM workshop_submissions ws
        JOIN workshops w ON ws.workshop_id = w.id
        JOIN students s ON ws.student_id = s.id
@@ -86,7 +86,7 @@ const getSubmissionsDashboard = async (req, res) => {
     // Sprint submissions across teacher's sprints
     const [sprintSubs] = await pool.query(
       `SELECT ss.*, ss.reaction AS teacher_reaction, sp.title AS sprint_title, at.name AS team_name,
-              g.name AS group_name, m.title AS module_title
+              g.name AS group_name, g.year AS group_year, m.title AS module_title
        FROM sprint_submissions ss
        JOIN sprints sp ON ss.sprint_id = sp.id
        JOIN agile_teams at ON ss.agile_team_id = at.id
@@ -99,7 +99,7 @@ const getSubmissionsDashboard = async (req, res) => {
 
     // PFE submissions across teacher's groups
     const [pfeSubs] = await pool.query(
-      `SELECT ps.*, ps.reaction AS teacher_reaction, pt.name AS team_name, g.name AS group_name
+      `SELECT ps.*, ps.reaction AS teacher_reaction, pt.name AS team_name, g.name AS group_name, g.year AS group_year
        FROM pfe_submissions ps
        JOIN pfe_teams pt ON ps.pfe_team_id = pt.id
        JOIN groups g ON pt.group_id = g.id

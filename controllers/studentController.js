@@ -59,7 +59,7 @@ const getGroups = async (req, res) => {
 const getModules = async (req, res) => {
   try {
     const [rows] = await pool.query(
-      `SELECT DISTINCT m.*, t.name AS teacher_name, g.name AS group_name, g.id AS group_id
+      `SELECT DISTINCT m.*, t.name AS teacher_name, g.name AS group_name, g.year AS group_year, g.id AS group_id
        FROM modules m
        JOIN teachers t ON m.teacher_id = t.id
        JOIN module_groups mg ON mg.module_id = m.id
@@ -81,7 +81,7 @@ const getSubmissions = async (req, res) => {
     const studentId = req.user.id;
 
     const [workshopSubs] = await pool.query(
-      `SELECT ws.*, ws.reaction AS teacher_reaction, w.title AS workshop_title, m.title AS module_title, g.name AS group_name
+      `SELECT ws.*, ws.reaction AS teacher_reaction, w.title AS workshop_title, m.title AS module_title, g.name AS group_name, g.year AS group_year
        FROM workshop_submissions ws
        JOIN workshops w ON ws.workshop_id = w.id
        JOIN modules m ON w.module_id = m.id
@@ -92,7 +92,7 @@ const getSubmissions = async (req, res) => {
     );
 
     const [sprintSubs] = await pool.query(
-      `SELECT ss.*, ss.reaction AS teacher_reaction, sp.title AS sprint_title, m.title AS module_title, at.name AS team_name, g.name AS group_name
+      `SELECT ss.*, ss.reaction AS teacher_reaction, sp.title AS sprint_title, m.title AS module_title, at.name AS team_name, g.name AS group_name, g.year AS group_year
        FROM sprint_submissions ss
        JOIN sprints sp ON ss.sprint_id = sp.id
        JOIN modules m ON sp.module_id = m.id
@@ -105,7 +105,7 @@ const getSubmissions = async (req, res) => {
     );
 
     const [pfeSubs] = await pool.query(
-      `SELECT ps.*, ps.reaction AS teacher_reaction, pt.name AS team_name, g.name AS group_name
+      `SELECT ps.*, ps.reaction AS teacher_reaction, pt.name AS team_name, g.name AS group_name, g.year AS group_year
        FROM pfe_submissions ps
        JOIN pfe_teams pt ON ps.pfe_team_id = pt.id
        JOIN groups g ON pt.group_id = g.id
