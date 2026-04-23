@@ -25,6 +25,7 @@ mainRouter.use("/agile",        require("../routes/agileRoutes"));
 mainRouter.use("/sprints",      require("../routes/sprintRoutes"));
 mainRouter.use("/pfe",          require("../routes/pfeRoutes"));
 mainRouter.use("/internships",  require("../routes/internshipRoutes"));
+mainRouter.use("/companies",    require("../routes/companyRoutes"));
 
 app.use("/api", mainRouter);
 app.use(mainRouter); // Fallback for environments where /api is stripped or not used

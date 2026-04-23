@@ -9,13 +9,13 @@ const isValidDateString = (value) => {
 
 // POST /api/internships  (student)
 const submitInternship = async (req, res) => {
-  const { company_name, supervisor_name, start_date, end_date, report_pdf } = req.body;
+  const { company_id, supervisor_name, start_date, end_date, report_pdf } = req.body;
 
   try {
     const [result] = await pool.query(
-      `INSERT INTO internships (student_id, company_name, supervisor_name, start_date, end_date, report_pdf)
+      `INSERT INTO internships (student_id, company_id, supervisor_name, start_date, end_date, report_pdf)
        VALUES (?, ?, ?, ?, ?, ?)`,
-      [req.user.id, company_name || null, supervisor_name || null,
+      [req.user.id, company_id || null, supervisor_name || null,
        start_date || null, end_date || null, report_pdf || null]
     );
     res.status(201).json({ id: result.insertId, message: "Internship submitted" });
@@ -28,7 +28,11 @@ const submitInternship = async (req, res) => {
 const getMyInternship = async (req, res) => {
   try {
     const [rows] = await pool.query(
-      "SELECT * FROM internships WHERE student_id = ? ORDER BY created_at DESC",
+      `SELECT i.*, c.name AS company_name, c.email AS company_email, c.phone AS company_phone
+       FROM internships i
+       LEFT JOIN companies c ON i.company_id = c.id
+       WHERE i.student_id = ? 
+       ORDER BY i.created_at DESC`,
       [req.user.id]
     );
     res.json(rows);
@@ -39,7 +43,7 @@ const getMyInternship = async (req, res) => {
 
 // PUT /api/internships/:id  (student)
 const updateInternship = async (req, res) => {
-  const { company_name, supervisor_name, start_date, end_date, report_pdf } = req.body || {};
+  const { company_id, supervisor_name, start_date, end_date, report_pdf } = req.body || {};
   const internshipId = Number.parseInt(req.params.id, 10);
   const errors = {};
 
@@ -50,8 +54,8 @@ const updateInternship = async (req, res) => {
     });
   }
 
-  if (!isNonEmptyString(company_name)) {
-    errors.company_name = "company_name is required";
+  if (!company_id) {
+    errors.company_id = "company_id is required";
   }
   if (!isNonEmptyString(supervisor_name)) {
     errors.supervisor_name = "supervisor_name is required";
@@ -87,17 +91,18 @@ const updateInternship = async (req, res) => {
 
     const [result] = await pool.query(
       `UPDATE internships
-       SET company_name = ?, supervisor_name = ?, start_date = ?, end_date = ?, report_pdf = ?
+       SET company_id = ?, supervisor_name = ?, start_date = ?, end_date = ?, report_pdf = ?
        WHERE id = ?`,
-      [company_name.trim(), supervisor_name.trim(), start_date, end_date, report_pdf || null, internshipId]
+      [company_id, supervisor_name.trim(), start_date, end_date, report_pdf || null, internshipId]
     );
     if (result.affectedRows === 0)
       return res.status(404).json({ message: "Internship not found" });
 
     const [updatedRows] = await pool.query(
-      `SELECT id, company_name, supervisor_name, start_date, end_date, report_pdf
-       FROM internships
-       WHERE id = ?`,
+      `SELECT i.*, c.name AS company_name
+       FROM internships i
+       LEFT JOIN companies c ON i.company_id = c.id
+       WHERE i.id = ?`,
       [internshipId]
     );
 
@@ -149,8 +154,9 @@ const deleteInternship = async (req, res) => {
 const getInternshipsByGroup = async (req, res) => {
   try {
     const [rows] = await pool.query(
-      `SELECT i.*, s.name AS student_name, s.email AS student_email
+      `SELECT i.*, c.name AS company_name, s.name AS student_name, s.email AS student_email
        FROM internships i
+       LEFT JOIN companies c ON i.company_id = c.id
        JOIN students s ON i.student_id = s.id
        JOIN group_students gs ON gs.student_id = s.id
        WHERE gs.group_id = ?
