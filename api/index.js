@@ -15,6 +15,7 @@ ensureSubmissionReactionColumns().catch((err) => {
 
 // ── Routes ─────────────────────────────────────────────────────────────────────
 const mainRouter = express.Router();
+
 mainRouter.use("/auth",         require("../routes/authRoutes"));
 mainRouter.use("/teachers",     require("../routes/teacherRoutes"));
 mainRouter.use("/students",     require("../routes/studentRoutes"));
@@ -27,17 +28,23 @@ mainRouter.use("/pfe",          require("../routes/pfeRoutes"));
 mainRouter.use("/internships",  require("../routes/internshipRoutes"));
 mainRouter.use("/companies",    require("../routes/companyRoutes"));
 
+// Mount the router on both /api and / for maximum compatibility
 app.use("/api", mainRouter);
-app.use(mainRouter); // Fallback for environments where /api is stripped or not used
+app.use("/", mainRouter);
 
 // ── Health check ───────────────────────────────────────────────────────────────
+app.get("/health", (req, res) => {
+  res.json({ status: "ok", message: "EduTrack API is running 🚀", timestamp: new Date().toISOString() });
+});
+
 app.get("/", (req, res) => {
   res.json({ status: "ok", message: "EduTrack API is running 🚀" });
 });
 
 // ── 404 fallback ───────────────────────────────────────────────────────────────
 app.use((req, res) => {
-  res.status(404).json({ message: "Route not found" });
+  console.log(`404 Not Found: ${req.method} ${req.url}`);
+  res.status(404).json({ message: `Route not found: ${req.url}` });
 });
 
 // ── Error handler ──────────────────────────────────────────────────────────────

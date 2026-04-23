@@ -8,4 +8,8 @@ router.use(authenticate);
 router.get("/", getCompanies);
 router.post("/", createCompany);
 
+// Handle cases without trailing slash if needed
+router.get("", getCompanies);
+router.post("", createCompany);
+
 module.exports = router;
