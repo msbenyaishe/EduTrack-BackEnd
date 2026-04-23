@@ -58,7 +58,7 @@ const getGroupById = async (req, res) => {
 const updateGroup = async (req, res) => {
   const { name, year, invite_expires_at } = req.body;
   
-  // Build dynamic update query to allow partial updates
+  // Build dynamic update query to allow updates
   let query = "UPDATE groups SET ";
   const params = [];
   const updates = [];
