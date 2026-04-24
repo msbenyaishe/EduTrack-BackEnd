@@ -1,4 +1,5 @@
 const multer = require("multer");
+const fs = require("fs");
 const path = require("path");
 const { CloudinaryStorage } = require("multer-storage-cloudinary");
 const cloudinary = require("cloudinary").v2;
@@ -34,7 +35,15 @@ const storage = hasCloudinaryConfig
       },
     })
   : multer.diskStorage({
-      destination: (req, file, cb) => cb(null, "uploads"),
+      destination: (req, file, cb) => {
+        const uploadsDir = path.join(__dirname, "..", "uploads");
+        try {
+          fs.mkdirSync(uploadsDir, { recursive: true });
+          return cb(null, uploadsDir);
+        } catch (e) {
+          return cb(e);
+        }
+      },
       filename: (req, file, cb) => {
         const ext = path.extname(file.originalname || "").toLowerCase() || ".jpg";
         cb(null, `profile_${Date.now()}${ext}`);

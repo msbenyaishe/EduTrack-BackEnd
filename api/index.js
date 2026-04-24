@@ -1,5 +1,6 @@
 const express = require("express");
 const cors = require("cors");
+const path = require("path");
 require("dotenv").config();
 const { ensureSubmissionReactionColumns } = require("../utils/ensureSubmissionReactionColumns");
 
@@ -8,6 +9,9 @@ const app = express();
 // ── Middleware ─────────────────────────────────────────────────────────────────
 app.use(cors());
 app.use(express.json());
+
+// Serve locally stored uploads when Cloudinary is not used
+app.use("/uploads", express.static(path.join(__dirname, "..", "uploads")));
 
 ensureSubmissionReactionColumns().catch((err) => {
   console.error("Failed to ensure submission reaction columns:", err.message);
