@@ -19,7 +19,9 @@ const maybeUploadPersonalImage = (req, res, next) => {
         err instanceof multer.MulterError
           ? err.message
           : err.message || "Image upload failed";
-      return res.status(400).json({ message });
+      const status =
+        err.code === "CLOUDINARY_NOT_CONFIGURED" ? 503 : 400;
+      return res.status(status).json({ message });
     });
   }
   return next();

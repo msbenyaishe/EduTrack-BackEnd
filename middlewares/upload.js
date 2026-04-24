@@ -14,6 +14,9 @@ const hasCloudinaryConfig =
   !!process.env.CLOUDINARY_API_KEY &&
   !!process.env.CLOUDINARY_API_SECRET;
 
+// On Vercel / production serverless, writing to disk is not reliable.
+const isServerlessProd = !!process.env.VERCEL || process.env.NODE_ENV === "production";
+
 if (hasCloudinaryConfig) {
   cloudinary.config({
     cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -34,6 +37,8 @@ const storage = hasCloudinaryConfig
         },
       },
     })
+  : isServerlessProd
+    ? null
   : multer.diskStorage({
       destination: (req, file, cb) => {
         const uploadsDir = path.join(__dirname, "..", "uploads");
@@ -51,21 +56,41 @@ const storage = hasCloudinaryConfig
     });
 
 const fileFilter = (req, file, cb) => {
-  const ext = path.extname(file.originalname || "").slice(1).toLowerCase();
   const isImageMime = typeof file.mimetype === "string" && file.mimetype.startsWith("image/");
-  const isAllowedExt = ALLOWED_IMAGE_FORMATS.includes(ext);
+  // Some browsers/devices upload with filename "blob" (no extension). Allow based on MIME type in that case.
+  const ext = path.extname(file.originalname || "").slice(1).toLowerCase();
+  const hasExt = !!ext;
+  const isAllowedExt = !hasExt || ALLOWED_IMAGE_FORMATS.includes(ext);
+
   if (!isImageMime || !isAllowedExt) {
-    const err = new Error(`Unsupported image type. Allowed: ${ALLOWED_IMAGE_FORMATS.join(", ")}`);
+    const err = new Error(
+      `Unsupported image type. Allowed: ${ALLOWED_IMAGE_FORMATS.join(", ")}`
+    );
     err.code = "UNSUPPORTED_IMAGE_TYPE";
     return cb(err);
   }
   return cb(null, true);
 };
 
-const upload = multer({
-  storage,
-  fileFilter,
-  limits: { fileSize: MAX_FILE_SIZE_BYTES },
-});
+let upload;
+
+if (!storage) {
+  // Serverless prod without Cloudinary credentials: fail fast with a clear error.
+  upload = {
+    single: () => (req, res, next) => {
+      const err = new Error(
+        "Image upload is not available in production until Cloudinary environment variables are set on Vercel."
+      );
+      err.code = "CLOUDINARY_NOT_CONFIGURED";
+      next(err);
+    },
+  };
+} else {
+  upload = multer({
+    storage,
+    fileFilter,
+    limits: { fileSize: MAX_FILE_SIZE_BYTES },
+  });
+}
 
 module.exports = upload;
