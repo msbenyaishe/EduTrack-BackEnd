@@ -52,4 +52,36 @@ const updateCompany = async (req, res) => {
   }
 };
 
-module.exports = { getCompanies, createCompany, updateCompany };
+const deleteCompany = async (req, res) => {
+  if (req.user.role !== "teacher") {
+    return res.status(403).json({ message: "Only teachers can delete companies" });
+  }
+
+  const companyId = req.params.id;
+
+  try {
+    // Check if any internships are linked to this company
+    const [linkedInternships] = await pool.query(
+      "SELECT id FROM internships WHERE company_id = ?",
+      [companyId]
+    );
+
+    if (linkedInternships.length > 0) {
+      return res.status(400).json({ 
+        message: "Cannot delete company: It is linked to existing student internships. Please remove or update the internships first." 
+      });
+    }
+
+    const [result] = await pool.query("DELETE FROM companies WHERE id = ?", [companyId]);
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: "Company not found" });
+    }
+
+    res.json({ message: "Company deleted successfully" });
+  } catch (err) {
+    res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
+
+module.exports = { getCompanies, createCompany, updateCompany, deleteCompany };
