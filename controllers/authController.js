@@ -9,8 +9,11 @@ const registerTeacher = async (req, res) => {
     return res.status(400).json({ message: "All fields are required" });
 
   try {
-    const [existing] = await pool.query("SELECT id FROM teachers WHERE email = ?", [email]);
-    if (existing.length > 0)
+    // Check if email exists in EITHER table
+    const [existingTeacher] = await pool.query("SELECT id FROM teachers WHERE email = ?", [email]);
+    const [existingStudent] = await pool.query("SELECT id FROM students WHERE email = ?", [email]);
+    
+    if (existingTeacher.length > 0 || existingStudent.length > 0)
       return res.status(409).json({ message: "Email already registered" });
 
     const hashed = await bcrypt.hash(password, 10);
@@ -19,15 +22,17 @@ const registerTeacher = async (req, res) => {
       [name, email, hashed]
     );
 
+    const userId = Number(result.insertId);
     const token = jwt.sign(
-      { id: result.insertId, role: "teacher" },
+      { id: userId, role: "teacher" },
       process.env.JWT_SECRET,
       { expiresIn: "7d" }
     );
 
-    res.status(201).json({ token, role: "teacher", id: result.insertId, name, email });
+    res.status(201).json({ token, role: "teacher", id: userId, name, email });
   } catch (err) {
-    res.status(500).json({ message: "Server error", error: err.message });
+    console.error("REGISTER TEACHER ERROR:", err);
+    res.status(500).json({ message: "Server error during teacher registration", error: err.message });
   }
 };
 
@@ -35,12 +40,16 @@ const registerTeacher = async (req, res) => {
 const registerStudent = async (req, res) => {
   const { name, email, password, portfolio_link, additional_profile_data } = req.body;
   const personal_image = req.file ? req.file.path : null;
+  
   if (!name || !email || !password)
     return res.status(400).json({ message: "All fields are required" });
 
   try {
-    const [existing] = await pool.query("SELECT id FROM students WHERE email = ?", [email]);
-    if (existing.length > 0)
+    // Check if email exists in EITHER table
+    const [existingTeacher] = await pool.query("SELECT id FROM teachers WHERE email = ?", [email]);
+    const [existingStudent] = await pool.query("SELECT id FROM students WHERE email = ?", [email]);
+
+    if (existingTeacher.length > 0 || existingStudent.length > 0)
       return res.status(409).json({ message: "Email already registered" });
 
     const hashed = await bcrypt.hash(password, 10);
@@ -49,16 +58,22 @@ const registerStudent = async (req, res) => {
       [name, email, hashed, portfolio_link || null, personal_image, additional_profile_data || null]
     );
 
+    const userId = Number(result.insertId);
     const token = jwt.sign(
-      { id: result.insertId, role: "student" },
+      { id: userId, role: "student" },
       process.env.JWT_SECRET,
       { expiresIn: "7d" }
     );
 
-    res.status(201).json({ token, role: "student", id: result.insertId, name, email });
+    res.status(201).json({ token, role: "student", id: userId, name, email });
   } catch (err) {
-    console.error("DEBUG REGISTER ERROR:", err);
-    res.status(500).json({ message: "Server error during registration", error: err.message, stack: err.stack });
+    console.error("DEBUG REGISTER STUDENT ERROR:", err);
+    res.status(500).json({ 
+      message: "Server error during student registration", 
+      error: err.message, 
+      stack: err.stack,
+      details: "Check if all database columns exist and Cloudinary is configured correctly."
+    });
   }
 };
 
