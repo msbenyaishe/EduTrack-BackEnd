@@ -13,9 +13,10 @@ app.use(express.json());
 // Serve locally stored uploads when Cloudinary is not used
 app.use("/uploads", express.static(path.join(__dirname, "..", "uploads")));
 
-ensureSubmissionReactionColumns().catch((err) => {
-  console.error("Failed to ensure submission reaction columns:", err.message);
-});
+// Schema check - only run occasionally or manually to avoid overhead on every request
+// ensureSubmissionReactionColumns().catch((err) => {
+//   console.error("Failed to ensure submission reaction columns:", err.message);
+// });
 
 // ── Routes ─────────────────────────────────────────────────────────────────────
 const mainRouter = express.Router();
