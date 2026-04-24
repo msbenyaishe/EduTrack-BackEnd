@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const { registerTeacher, registerStudent, login, me } = require("../controllers/authController");
+const { registerTeacher, registerStudent, login, me, updateProfile, updatePassword } = require("../controllers/authController");
 const { authenticate } = require("../middlewares/authMiddleware");
 const upload = require("../middlewares/upload");
 const multer = require("multer");
@@ -30,5 +30,8 @@ const maybeUploadPersonalImage = (req, res, next) => {
 router.post("/register-student", maybeUploadPersonalImage, registerStudent);
 router.post("/login", login);
 router.get("/me", authenticate, me);
+
+router.put("/profile", authenticate, maybeUploadPersonalImage, updateProfile);
+router.put("/password", authenticate, updatePassword);
 
 module.exports = router;

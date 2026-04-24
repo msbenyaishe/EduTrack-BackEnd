@@ -119,7 +119,7 @@ const me = async (req, res) => {
     const { id, role } = req.user;
     const table = role === "teacher" ? "teachers" : "students";
     const [rows] = await pool.query(
-      `SELECT id, name, email, created_at${role === 'student' ? ', portfolio_link, personal_image, additional_profile_data' : ''} FROM ${table} WHERE id = ?`,
+      `SELECT id, name, email, created_at, personal_image${role === 'student' ? ', portfolio_link, additional_profile_data' : ''} FROM ${table} WHERE id = ?`,
       [id]
     );
     if (rows.length === 0)
@@ -131,4 +131,70 @@ const me = async (req, res) => {
   }
 };
 
-module.exports = { registerTeacher, registerStudent, login, me };
+// PUT /api/auth/profile
+const updateProfile = async (req, res) => {
+  const { name, portfolio_link, additional_profile_data } = req.body;
+  const personal_image = req.file ? req.file.path : null;
+  const { id, role } = req.user;
+  const table = role === "teacher" ? "teachers" : "students";
+
+  try {
+    let query = `UPDATE ${table} SET name = ?`;
+    let params = [name];
+
+    if (role === "student") {
+      query += ", portfolio_link = ?, additional_profile_data = ?";
+      params.push(portfolio_link || null, additional_profile_data || null);
+    }
+
+    if (personal_image) {
+      query += ", personal_image = ?";
+      params.push(personal_image);
+    }
+
+    query += " WHERE id = ?";
+    params.push(id);
+
+    await pool.query(query, params);
+
+    res.json({ 
+      message: "Profile updated successfully", 
+      name,
+      personal_image: personal_image || undefined,
+      portfolio_link: role === 'student' ? portfolio_link : undefined,
+      additional_profile_data: role === 'student' ? additional_profile_data : undefined
+    });
+  } catch (err) {
+    console.error("UPDATE PROFILE ERROR:", err);
+    res.status(500).json({ message: "Server error during profile update", error: err.message });
+  }
+};
+
+// PUT /api/auth/password
+const updatePassword = async (req, res) => {
+  const { oldPassword, newPassword } = req.body;
+  const { id, role } = req.user;
+  const table = role === "teacher" ? "teachers" : "students";
+
+  if (!oldPassword || !newPassword) {
+    return res.status(400).json({ message: "Old and new passwords are required" });
+  }
+
+  try {
+    const [rows] = await pool.query(`SELECT password FROM ${table} WHERE id = ?`, [id]);
+    if (rows.length === 0) return res.status(404).json({ message: "User not found" });
+
+    const match = await bcrypt.compare(oldPassword, rows[0].password);
+    if (!match) return res.status(401).json({ message: "Incorrect old password" });
+
+    const hashed = await bcrypt.hash(newPassword, 10);
+    await pool.query(`UPDATE ${table} SET password = ? WHERE id = ?`, [hashed, id]);
+
+    res.json({ message: "Password updated successfully" });
+  } catch (err) {
+    console.error("UPDATE PASSWORD ERROR:", err);
+    res.status(500).json({ message: "Server error during password update", error: err.message });
+  }
+};
+
+module.exports = { registerTeacher, registerStudent, login, me, updateProfile, updatePassword };
