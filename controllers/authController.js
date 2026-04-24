@@ -133,14 +133,37 @@ const me = async (req, res) => {
 
 // PUT /api/auth/profile
 const updateProfile = async (req, res) => {
-  const { name, portfolio_link, additional_profile_data } = req.body;
+  const { name, email, portfolio_link, additional_profile_data } = req.body;
   const personal_image = req.file ? req.file.path : null;
   const { id, role } = req.user;
   const table = role === "teacher" ? "teachers" : "students";
 
   try {
+    // If email is provided and different from current, check if it's already taken
+    if (email) {
+      const [teachersWithEmail] = await pool.query("SELECT id FROM teachers WHERE email = ?", [email]);
+      const [studentsWithEmail] = await pool.query("SELECT id FROM students WHERE email = ?", [email]);
+
+      if (teachersWithEmail.length > 0) {
+        if (!(role === 'teacher' && teachersWithEmail[0].id === id)) {
+           return res.status(409).json({ message: "Email already registered by another user" });
+        }
+      }
+      
+      if (studentsWithEmail.length > 0) {
+        if (!(role === 'student' && studentsWithEmail[0].id === id)) {
+           return res.status(409).json({ message: "Email already registered by another user" });
+        }
+      }
+    }
+
     let query = `UPDATE ${table} SET name = ?`;
     let params = [name];
+
+    if (email) {
+      query += ", email = ?";
+      params.push(email);
+    }
 
     if (role === "student") {
       query += ", portfolio_link = ?, additional_profile_data = ?";
@@ -160,6 +183,7 @@ const updateProfile = async (req, res) => {
     res.json({ 
       message: "Profile updated successfully", 
       name,
+      email,
       personal_image: personal_image || undefined,
       portfolio_link: role === 'student' ? portfolio_link : undefined,
       additional_profile_data: role === 'student' ? additional_profile_data : undefined
