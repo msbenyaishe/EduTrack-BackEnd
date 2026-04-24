@@ -17,7 +17,8 @@ const storage = new CloudinaryStorage({
   cloudinary: cloudinary,
   params: {
     folder: 'edutrack_profiles',
-    allowed_formats: ['jpg', 'png', 'jpeg', 'webp'],
+    resource_type: 'auto',
+    public_id: (req, file) => `profile_${Date.now()}_${file.originalname.split('.')[0]}`,
   },
 });
 
