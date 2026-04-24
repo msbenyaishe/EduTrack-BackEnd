@@ -49,8 +49,14 @@ app.use((req, res) => {
 
 // ── Error handler ──────────────────────────────────────────────────────────────
 app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({ message: "Internal server error", error: err.message });
+  console.error("GLOBAL ERROR HANDLER:", err.stack);
+  res.status(500).json({ 
+    message: "Internal server error", 
+    error: err.message, 
+    stack: err.stack,
+    path: req.path,
+    method: req.method
+  });
 });
 
 // ── Local dev server (not used by Vercel) ─────────────────────────────────────

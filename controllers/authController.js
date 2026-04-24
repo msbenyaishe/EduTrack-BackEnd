@@ -57,7 +57,8 @@ const registerStudent = async (req, res) => {
 
     res.status(201).json({ token, role: "student", id: result.insertId, name, email });
   } catch (err) {
-    res.status(500).json({ message: "Server error", error: err.message });
+    console.error("DEBUG REGISTER ERROR:", err);
+    res.status(500).json({ message: "Server error during registration", error: err.message, stack: err.stack });
   }
 };
 
