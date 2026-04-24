@@ -65,7 +65,7 @@ const registerStudent = async (req, res) => {
       { expiresIn: "7d" }
     );
 
-    res.status(201).json({ token, role: "student", id: userId, name, email });
+    res.status(201).json({ token, role: "student", id: userId, name, email, personal_image });
   } catch (err) {
     console.error("DEBUG REGISTER STUDENT ERROR:", err);
     res.status(500).json({ 
@@ -107,7 +107,7 @@ const login = async (req, res) => {
       { expiresIn: "7d" }
     );
 
-    res.json({ token, role, id: user.id, name: user.name, email: user.email });
+    res.json({ token, role, id: user.id, name: user.name, email: user.email, personal_image: user.personal_image });
   } catch (err) {
     res.status(500).json({ message: "Server error", error: err.message });
   }

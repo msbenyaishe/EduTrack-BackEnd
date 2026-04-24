@@ -138,7 +138,7 @@ const generateCode = async (req, res) => {
 const getGroupStudents = async (req, res) => {
   try {
     const [rows] = await pool.query(
-      `SELECT s.id, s.name, s.email, gs.joined_at
+      `SELECT s.id, s.name, s.email, s.personal_image, s.portfolio_link, gs.joined_at
        FROM students s
        JOIN group_students gs ON gs.student_id = s.id
        WHERE gs.group_id = ?
