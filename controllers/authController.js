@@ -33,7 +33,8 @@ const registerTeacher = async (req, res) => {
 
 // POST /api/auth/register-student
 const registerStudent = async (req, res) => {
-  const { name, email, password } = req.body;
+  const { name, email, password, portfolio_link, additional_profile_data } = req.body;
+  const personal_image = req.file ? req.file.path : null;
   if (!name || !email || !password)
     return res.status(400).json({ message: "All fields are required" });
 
@@ -44,8 +45,8 @@ const registerStudent = async (req, res) => {
 
     const hashed = await bcrypt.hash(password, 10);
     const [result] = await pool.query(
-      "INSERT INTO students (name, email, password) VALUES (?, ?, ?)",
-      [name, email, hashed]
+      "INSERT INTO students (name, email, password, portfolio_link, personal_image, additional_profile_data) VALUES (?, ?, ?, ?, ?, ?)",
+      [name, email, hashed, portfolio_link || null, personal_image, additional_profile_data || null]
     );
 
     const token = jwt.sign(
@@ -102,7 +103,7 @@ const me = async (req, res) => {
     const { id, role } = req.user;
     const table = role === "teacher" ? "teachers" : "students";
     const [rows] = await pool.query(
-      `SELECT id, name, email, created_at FROM ${table} WHERE id = ?`,
+      `SELECT id, name, email, created_at${role === 'student' ? ', portfolio_link, personal_image, additional_profile_data' : ''} FROM ${table} WHERE id = ?`,
       [id]
     );
     if (rows.length === 0)
