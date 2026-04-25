@@ -50,17 +50,44 @@ const getSprintById = async (req, res) => {
 
 // PUT /api/sprints/:id  (teacher)
 const updateSprint = async (req, res) => {
-  const { title, description, pdf_report, repo, web_page } = req.body;
   try {
-    const [result] = await pool.query(
+    const [rows] = await pool.query(
+      `SELECT sp.*
+       FROM sprints sp
+       JOIN modules m ON sp.module_id = m.id
+       WHERE sp.id = ? AND m.teacher_id = ?
+       LIMIT 1`,
+      [req.params.id, req.user.id]
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({ message: "Sprint not found" });
+    }
+
+    const current = rows[0];
+    const hasField = (key) => Object.prototype.hasOwnProperty.call(req.body || {}, key);
+    const pickOrCurrent = (key) => (hasField(key) ? req.body[key] : current[key]);
+    const normalizeNullable = (value) => {
+      if (value === undefined) return undefined;
+      if (value === null) return null;
+      if (typeof value === "string" && value.trim() === "") return null;
+      return value;
+    };
+
+    const nextTitle = normalizeNullable(pickOrCurrent("title"));
+    const nextDescription = normalizeNullable(pickOrCurrent("description"));
+    const nextPdfReport = normalizeNullable(pickOrCurrent("pdf_report"));
+    const nextRepo = normalizeNullable(pickOrCurrent("repo"));
+    const nextWebPage = normalizeNullable(pickOrCurrent("web_page"));
+
+    await pool.query(
       `UPDATE sprints sp
        JOIN modules m ON sp.module_id = m.id
        SET sp.title = ?, sp.description = ?, sp.pdf_report = ?, sp.repo = ?, sp.web_page = ?
        WHERE sp.id = ? AND m.teacher_id = ?`,
-      [title, description, pdf_report, repo, web_page, req.params.id, req.user.id]
+      [nextTitle, nextDescription, nextPdfReport, nextRepo, nextWebPage, req.params.id, req.user.id]
     );
-    if (result.affectedRows === 0)
-      return res.status(404).json({ message: "Sprint not found" });
+
     res.json({ message: "Sprint updated" });
   } catch (err) {
     res.status(500).json({ message: "Server error", error: err.message });
