@@ -3,14 +3,15 @@ const pool = require("../config/db");
 // POST /api/modules
 const createModule = async (req, res) => {
   const { title, description } = req.body;
+  const logo_url = req.file ? req.file.path : null;
   if (!title) return res.status(400).json({ message: "Title is required" });
 
   try {
     const [result] = await pool.query(
-      "INSERT INTO modules (teacher_id, title, description) VALUES (?, ?, ?)",
-      [req.user.id, title, description || null]
+      "INSERT INTO modules (teacher_id, title, description, logo_url) VALUES (?, ?, ?, ?)",
+      [req.user.id, title, description || null, logo_url]
     );
-    res.status(201).json({ id: result.insertId, title, description });
+    res.status(201).json({ id: result.insertId, title, description, logo_url });
   } catch (err) {
     res.status(500).json({ message: "Server error", error: err.message });
   }
@@ -59,14 +60,21 @@ const getModuleById = async (req, res) => {
 // PUT /api/modules/:id
 const updateModule = async (req, res) => {
   const { title, description } = req.body;
+  const logo_url = req.file ? req.file.path : undefined;
+
   try {
-    const [result] = await pool.query(
-      "UPDATE modules SET title = ?, description = ? WHERE id = ? AND teacher_id = ?",
-      [title, description, req.params.id, req.user.id]
-    );
+    let query = "UPDATE modules SET title = ?, description = ? WHERE id = ? AND teacher_id = ?";
+    let params = [title, description, req.params.id, req.user.id];
+
+    if (logo_url !== undefined) {
+      query = "UPDATE modules SET title = ?, description = ?, logo_url = ? WHERE id = ? AND teacher_id = ?";
+      params = [title, description, logo_url, req.params.id, req.user.id];
+    }
+
+    const [result] = await pool.query(query, params);
     if (result.affectedRows === 0)
       return res.status(404).json({ message: "Module not found" });
-    res.json({ message: "Module updated" });
+    res.json({ message: "Module updated", logo_url });
   } catch (err) {
     res.status(500).json({ message: "Server error", error: err.message });
   }

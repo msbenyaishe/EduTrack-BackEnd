@@ -6,13 +6,14 @@ const {
 } = require("../controllers/moduleController");
 const { authenticate } = require("../middlewares/authMiddleware");
 const { requireRole } = require("../middlewares/roleMiddleware");
+const upload = require("../middlewares/upload");
 
 router.use(authenticate, requireRole("teacher"));
 
-router.post("/", createModule);
+router.post("/", upload.single("logo"), createModule);
 router.get("/", getModules);
 router.get("/:id", getModuleById);
-router.put("/:id", updateModule);
+router.put("/:id", upload.single("logo"), updateModule);
 router.delete("/:id", deleteModule);
 
 router.post("/assign", assignModuleToGroup);
