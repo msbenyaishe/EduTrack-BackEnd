@@ -107,7 +107,16 @@ const login = async (req, res) => {
       { expiresIn: "7d" }
     );
 
-    res.json({ token, role, id: user.id, name: user.name, email: user.email, personal_image: user.personal_image });
+    res.json({ 
+      token, 
+      role, 
+      id: user.id, 
+      name: user.name, 
+      email: user.email, 
+      personal_image: user.personal_image,
+      portfolio_link: role === 'student' ? user.portfolio_link : undefined,
+      additional_profile_data: role === 'student' ? user.additional_profile_data : undefined
+    });
   } catch (err) {
     res.status(500).json({ message: "Server error", error: err.message });
   }
