@@ -22,7 +22,7 @@ const createWorkshop = async (req, res) => {
 const getWorkshopsByGroup = async (req, res) => {
   try {
     const [rows] = await pool.query(
-      `SELECT w.*, m.title AS module_title
+      `SELECT w.*, m.title AS module_title, m.logo_url
        FROM workshops w
        JOIN modules m ON w.module_id = m.id
        WHERE w.group_id = ? AND m.teacher_id = ?
@@ -90,7 +90,7 @@ const deleteWorkshop = async (req, res) => {
 const getStudentWorkshops = async (req, res) => {
   try {
     const [rows] = await pool.query(
-      `SELECT w.*, m.title AS module, t.name AS teacher, g.name AS group_name,
+      `SELECT w.*, m.title AS module, m.logo_url, t.name AS teacher, g.name AS group_name,
               ws.id AS submission_id,
               IF(ws.id IS NOT NULL, 1, 0) AS submitted,
               ws.repo AS submitted_repo,
