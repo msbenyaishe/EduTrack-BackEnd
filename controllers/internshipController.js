@@ -10,13 +10,44 @@ const isValidDateString = (value) => {
 // POST /api/internships  (student)
 const submitInternship = async (req, res) => {
   const { company_id, supervisor_name, start_date, end_date, report_pdf } = req.body;
+  const errors = {};
+
+  if (!company_id) {
+    errors.company_id = "company_id is required";
+  }
+  if (!isNonEmptyString(supervisor_name)) {
+    errors.supervisor_name = "supervisor_name is required";
+  }
+  if (!isValidDateString(start_date)) {
+    errors.start_date = "start_date must be a valid YYYY-MM-DD date";
+  }
+  if (!isValidDateString(end_date)) {
+    errors.end_date = "end_date must be a valid YYYY-MM-DD date";
+  }
+  if (isValidDateString(start_date) && isValidDateString(end_date) && end_date < start_date) {
+    errors.end_date = "end_date must be the same day or after start_date";
+  }
+
+  if (Object.keys(errors).length > 0) {
+    return res.status(422).json({
+      message: "Validation failed",
+      errors,
+    });
+  }
 
   try {
+    const [companyRows] = await pool.query("SELECT id FROM companies WHERE id = ? LIMIT 1", [company_id]);
+    if (companyRows.length === 0) {
+      return res.status(422).json({
+        message: "Validation failed",
+        errors: { company_id: "company_id must reference an existing company" },
+      });
+    }
+
     const [result] = await pool.query(
       `INSERT INTO internships (student_id, company_id, supervisor_name, start_date, end_date, report_pdf)
        VALUES (?, ?, ?, ?, ?, ?)`,
-      [req.user.id, company_id || null, supervisor_name || null,
-       start_date || null, end_date || null, report_pdf || null]
+      [req.user.id, company_id, supervisor_name.trim(), start_date, end_date, report_pdf || null]
     );
     res.status(201).json({ id: result.insertId, message: "Internship submitted" });
   } catch (err) {
