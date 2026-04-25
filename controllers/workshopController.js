@@ -52,14 +52,14 @@ const getWorkshopById = async (req, res) => {
 
 // PUT /api/workshops/:id  (teacher)
 const updateWorkshop = async (req, res) => {
-  const { title, description, pdf_report, repo, web_page } = req.body;
+  const { module_id, title, description, pdf_report, repo, web_page } = req.body;
   try {
     const [result] = await pool.query(
       `UPDATE workshops w
        JOIN modules m ON w.module_id = m.id
-       SET w.title = ?, w.description = ?, w.pdf_report = ?, w.repo = ?, w.web_page = ?
+       SET w.module_id = ?, w.title = ?, w.description = ?, w.pdf_report = ?, w.repo = ?, w.web_page = ?
        WHERE w.id = ? AND m.teacher_id = ?`,
-      [title, description, pdf_report, repo, web_page, req.params.id, req.user.id]
+      [module_id, title, description, pdf_report, repo, web_page, req.params.id, req.user.id]
     );
     if (result.affectedRows === 0)
       return res.status(404).json({ message: "Workshop not found" });
