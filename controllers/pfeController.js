@@ -1,4 +1,5 @@
 const pool = require("../config/db");
+const telegramService = require("../services/telegramService");
 
 // POST /api/pfe/teams  (student)
 const createTeam = async (req, res) => {
@@ -165,24 +166,59 @@ const submitPFE = async (req, res) => {
       "SELECT id FROM pfe_submissions WHERE pfe_team_id = ?",
       [pfe_team_id]
     );
-    if (existing.length > 0) {
+    let isUpdate = existing.length > 0;
+    let insertId = null;
+    if (isUpdate) {
       await pool.query(
         `UPDATE pfe_submissions 
          SET project_title = ?, description = ?, project_repo = ?, project_demo = ?, explanation_video = ?, report_pdf = ?, submitted_at = NOW()
          WHERE pfe_team_id = ?`,
         [project_title || null, description || null, project_repo || null, project_demo || null, explanation_video || null, report_pdf || null, pfe_team_id]
       );
-      return res.json({ message: "PFE submission has been successfully updated." });
+    } else {
+      const [result] = await pool.query(
+        `INSERT INTO pfe_submissions
+           (pfe_team_id, project_title, description, project_repo, project_demo, explanation_video, report_pdf)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [pfe_team_id, project_title || null, description || null,
+         project_repo || null, project_demo || null, explanation_video || null, report_pdf || null]
+      );
+      insertId = result.insertId;
     }
-    
-    const [result] = await pool.query(
-      `INSERT INTO pfe_submissions
-         (pfe_team_id, project_title, description, project_repo, project_demo, explanation_video, report_pdf)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [pfe_team_id, project_title || null, description || null,
-       project_repo || null, project_demo || null, explanation_video || null, report_pdf || null]
-    );
-    res.status(201).json({ id: result.insertId, message: "PFE project submitted successfully!" });
+
+    // Trigger Telegram Notification
+    try {
+      const [info] = await pool.query(`
+        SELECT t.telegram_chat_id, pt.name as teamName, g.name as groupName
+        FROM pfe_teams pt
+        JOIN groups g ON pt.group_id = g.id
+        JOIN teachers t ON g.teacher_id = t.id
+        WHERE pt.id = ?
+      `, [pfe_team_id]);
+
+      if (info.length > 0) {
+        const { telegram_chat_id, teamName, groupName } = info[0];
+        
+        const [studentInfo] = await pool.query("SELECT name FROM students WHERE id = ?", [req.user.id]);
+        const studentName = studentInfo.length > 0 ? studentInfo[0].name : "Unknown Student";
+
+        await telegramService.sendSubmissionNotification(telegram_chat_id, {
+          studentName,
+          moduleName: "PFE",
+          assignmentTitle: project_title || "PFE Submission",
+          groupName: `${groupName} - ${teamName}`,
+          submittedAt: new Date().toLocaleString()
+        });
+      }
+    } catch (telegramErr) {
+      console.error("Telegram notification failed (PFE):", telegramErr.message);
+    }
+
+    if (isUpdate) {
+      return res.json({ message: "PFE submission has been successfully updated." });
+    } else {
+      res.status(201).json({ id: insertId, message: "PFE project submitted successfully!" });
+    }
   } catch (err) {
     res.status(500).json({ message: "Failed to save PFE submission. Please check your data and try again.", error: err.message });
   }

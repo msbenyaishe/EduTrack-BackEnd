@@ -1,4 +1,5 @@
 const pool = require("../config/db");
+const telegramService = require("../services/telegramService");
 
 // POST /api/sprints  (teacher)
 const createSprint = async (req, res) => {
@@ -123,6 +124,7 @@ const submitSprint = async (req, res) => {
       [req.params.id, agile_team_id]
     );
 
+    let insertId = null;
     if (existing.length > 0) {
       // Allow modifying existing submission
       await pool.query(
@@ -130,16 +132,50 @@ const submitSprint = async (req, res) => {
          WHERE id = ?`,
         [pdf_report || null, repo || null, web_page || null, existing[0].id]
       );
-      return res.json({ message: "Sprint submission updated successfully!" });
+    } else {
+      // New submission
+      const [result] = await pool.query(
+        `INSERT INTO sprint_submissions (sprint_id, agile_team_id, pdf_report, repo, web_page)
+         VALUES (?, ?, ?, ?, ?)`,
+        [req.params.id, agile_team_id, pdf_report || null, repo || null, web_page || null]
+      );
+      insertId = result.insertId;
     }
 
-    // New submission
-    const [result] = await pool.query(
-      `INSERT INTO sprint_submissions (sprint_id, agile_team_id, pdf_report, repo, web_page)
-       VALUES (?, ?, ?, ?, ?)`,
-      [req.params.id, agile_team_id, pdf_report || null, repo || null, web_page || null]
-    );
-    res.status(201).json({ id: result.insertId, message: "Sprint submitted successfully!" });
+    // Trigger Telegram Notification
+    try {
+      const [info] = await pool.query(`
+        SELECT t.telegram_chat_id, sp.title as assignmentTitle, m.title as moduleName, g.name as groupName
+        FROM sprints sp
+        JOIN modules m ON sp.module_id = m.id
+        JOIN teachers t ON m.teacher_id = t.id
+        JOIN groups g ON sp.group_id = g.id
+        WHERE sp.id = ?
+      `, [req.params.id]);
+
+      if (info.length > 0) {
+        const { telegram_chat_id, assignmentTitle, moduleName, groupName } = info[0];
+        
+        const [studentInfo] = await pool.query("SELECT name FROM students WHERE id = ?", [req.user.id]);
+        const studentName = studentInfo.length > 0 ? studentInfo[0].name : "Unknown Student";
+
+        await telegramService.sendSubmissionNotification(telegram_chat_id, {
+          studentName,
+          moduleName,
+          assignmentTitle: assignmentTitle || "Sprint Submission",
+          groupName,
+          submittedAt: new Date().toLocaleString()
+        });
+      }
+    } catch (telegramErr) {
+      console.error("Telegram notification failed (sprint):", telegramErr.message);
+    }
+
+    if (existing.length > 0) {
+      return res.json({ message: "Sprint submission updated successfully!" });
+    } else {
+      res.status(201).json({ id: insertId, message: "Sprint submitted successfully!" });
+    }
   } catch (err) {
     res.status(500).json({ message: "Server error occurred while saving your sprint submission.", error: err.message });
   }

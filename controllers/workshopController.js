@@ -1,4 +1,5 @@
 const pool = require("../config/db");
+const telegramService = require("../services/telegramService");
 
 // POST /api/workshops  (teacher)
 const createWorkshop = async (req, res) => {
@@ -128,6 +129,7 @@ const submitWorkshop = async (req, res) => {
       [workshopId, req.user.id]
     );
 
+    let insertId = null;
     if (existing.length > 0) {
       // Allow modifying existing submission
       await pool.query(
@@ -135,16 +137,50 @@ const submitWorkshop = async (req, res) => {
          WHERE id = ?`,
         [pdf_report || null, repo || null, web_page || null, existing[0].id]
       );
-      return res.json({ message: "Workshop submission updated successfully!" });
+    } else {
+      // New submission
+      const [result] = await pool.query(
+        `INSERT INTO workshop_submissions (workshop_id, student_id, pdf_report, repo, web_page)
+         VALUES (?, ?, ?, ?, ?)`,
+        [workshopId, req.user.id, pdf_report || null, repo || null, web_page || null]
+      );
+      insertId = result.insertId;
     }
 
-    // New submission
-    const [result] = await pool.query(
-      `INSERT INTO workshop_submissions (workshop_id, student_id, pdf_report, repo, web_page)
-       VALUES (?, ?, ?, ?, ?)`,
-      [workshopId, req.user.id, pdf_report || null, repo || null, web_page || null]
-    );
-    res.status(201).json({ id: result.insertId, message: "Workshop submitted successfully!" });
+    // Trigger Telegram Notification
+    try {
+      const [info] = await pool.query(`
+        SELECT t.telegram_chat_id, w.title as assignmentTitle, m.title as moduleName, g.name as groupName
+        FROM workshops w
+        JOIN modules m ON w.module_id = m.id
+        JOIN teachers t ON m.teacher_id = t.id
+        JOIN groups g ON w.group_id = g.id
+        WHERE w.id = ?
+      `, [workshopId]);
+
+      if (info.length > 0) {
+        const { telegram_chat_id, assignmentTitle, moduleName, groupName } = info[0];
+        
+        const [studentInfo] = await pool.query("SELECT name FROM students WHERE id = ?", [req.user.id]);
+        const studentName = studentInfo.length > 0 ? studentInfo[0].name : "Unknown Student";
+
+        await telegramService.sendSubmissionNotification(telegram_chat_id, {
+          studentName,
+          moduleName,
+          assignmentTitle,
+          groupName,
+          submittedAt: new Date().toLocaleString()
+        });
+      }
+    } catch (telegramErr) {
+      console.error("Telegram notification failed (workshop):", telegramErr.message);
+    }
+
+    if (existing.length > 0) {
+      return res.json({ message: "Workshop submission updated successfully!" });
+    } else {
+      res.status(201).json({ id: insertId, message: "Workshop submitted successfully!" });
+    }
   } catch (err) {
     res.status(500).json({ message: "Server error occurred while saving your submission.", error: err.message });
   }
