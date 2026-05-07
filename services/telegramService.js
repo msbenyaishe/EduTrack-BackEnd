@@ -15,18 +15,19 @@ if (token && token !== 'your_telegram_bot_token_here') {
  */
 const sendMessage = async (chatId, message) => {
   if (!bot) {
-    console.log("Telegram bot not configured. Skipping notification.");
+    console.log("❌ Telegram bot not configured. Skipping notification.");
     return;
   }
   if (!chatId || chatId === 'teacher_chat_id_here') {
-    console.log("No valid Chat ID provided. Skipping notification.");
+    console.log(`⚠️ No valid Chat ID provided (${chatId}). Skipping notification.`);
     return;
   }
   try {
+    console.log(`📨 Attempting to send Telegram message to ${chatId}...`);
     await bot.sendMessage(chatId, message, { parse_mode: 'Markdown' });
-    console.log(`Telegram notification sent successfully to chat ID: ${chatId}`);
+    console.log(`✅ Telegram notification sent successfully to chat ID: ${chatId}`);
   } catch (error) {
-    console.error("Telegram Notification Error:", error.message);
+    console.error(`❌ Telegram Notification Error for ${chatId}:`, error.message);
   }
 };
 

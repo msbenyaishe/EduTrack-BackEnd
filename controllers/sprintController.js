@@ -18,15 +18,18 @@ const createSprint = async (req, res) => {
 
     // Trigger Telegram Notification for the Group
     try {
+      console.log(`🔔 Sprint created. Preparing Telegram notification for group ${group_id}...`);
       const [moduleInfo] = await pool.query("SELECT title FROM modules WHERE id = ?", [module_id]);
       if (moduleInfo.length > 0) {
         await telegramService.notifyNewSprint(group_id, {
           moduleName: moduleInfo[0].title,
           title: title
         });
+      } else {
+        console.log(`⚠️ Could not find module info for ID ${module_id}. Skipping notification.`);
       }
     } catch (telegramErr) {
-      console.error("Telegram group notification failed (create sprint):", telegramErr.message);
+      console.error("❌ Telegram group notification failed (create sprint):", telegramErr.message);
     }
   } catch (err) {
     res.status(500).json({ message: "Server error", error: err.message });

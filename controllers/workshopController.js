@@ -17,6 +17,7 @@ const createWorkshop = async (req, res) => {
 
     // Trigger Telegram Notification for the Group
     try {
+      console.log(`🔔 Workshop created. Preparing Telegram notification for group ${group_id}...`);
       const [moduleInfo] = await pool.query("SELECT title FROM modules WHERE id = ?", [module_id]);
       if (moduleInfo.length > 0) {
         await telegramService.notifyNewWorkshop(group_id, {
@@ -24,9 +25,11 @@ const createWorkshop = async (req, res) => {
           title: title,
           deadline: null // No deadline field in current workshops table schema
         });
+      } else {
+        console.log(`⚠️ Could not find module info for ID ${module_id}. Skipping notification.`);
       }
     } catch (telegramErr) {
-      console.error("Telegram group notification failed (create workshop):", telegramErr.message);
+      console.error("❌ Telegram group notification failed (create workshop):", telegramErr.message);
     }
   } catch (err) {
     res.status(500).json({ message: "Server error", error: err.message });
