@@ -1,34 +1,71 @@
-const TelegramBot = require('node-telegram-bot-api');
+const https = require('https');
 const pool = require('../config/db');
 require('dotenv').config();
 
 const token = process.env.TELEGRAM_BOT_TOKEN;
 const defaultChatId = process.env.DEFAULT_TEACHER_CHAT_ID;
-let bot = null;
-
-if (token && token !== 'your_telegram_bot_token_here') {
-  bot = new TelegramBot(token, { polling: false });
-}
 
 /**
- * Generic internal send message helper
+ * Generic internal send message helper using direct HTTPS request
+ * for maximum compatibility with serverless environments (Vercel)
  */
 const sendMessage = async (chatId, message) => {
-  if (!bot) {
-    console.log("❌ Telegram bot not configured. Skipping notification.");
+  if (!token || token === 'your_telegram_bot_token_here') {
+    console.log("❌ Telegram bot token not configured. Skipping notification.");
     return;
   }
   if (!chatId || chatId === 'teacher_chat_id_here') {
     console.log(`⚠️ No valid Chat ID provided (${chatId}). Skipping notification.`);
     return;
   }
-  try {
+
+  const data = JSON.stringify({
+    chat_id: chatId,
+    text: message,
+    parse_mode: 'Markdown'
+  });
+
+  const options = {
+    hostname: 'api.telegram.org',
+    port: 443,
+    path: `/bot${token}/sendMessage`,
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Content-Length': data.length
+    },
+    timeout: 8000 // 8 seconds timeout
+  };
+
+  return new Promise((resolve) => {
     console.log(`📨 Attempting to send Telegram message to ${chatId}...`);
-    await bot.sendMessage(chatId, message, { parse_mode: 'Markdown' });
-    console.log(`✅ Telegram notification sent successfully to chat ID: ${chatId}`);
-  } catch (error) {
-    console.error(`❌ Telegram Notification Error for ${chatId}:`, error.message);
-  }
+    const req = https.request(options, (res) => {
+      let responseBody = '';
+      res.on('data', (chunk) => { responseBody += chunk; });
+      res.on('end', () => {
+        if (res.statusCode === 200) {
+          console.log(`✅ Telegram notification sent successfully to chat ID: ${chatId}`);
+        } else {
+          console.error(`❌ Telegram API error (${res.statusCode}):`, responseBody);
+        }
+        resolve();
+      });
+    });
+
+    req.on('error', (error) => {
+      console.error(`❌ Telegram Notification Request Error for ${chatId}:`, error.message);
+      resolve();
+    });
+
+    req.on('timeout', () => {
+      req.destroy();
+      console.error(`❌ Telegram Notification Timeout for ${chatId}`);
+      resolve();
+    });
+
+    req.write(data);
+    req.end();
+  });
 };
 
 /**
