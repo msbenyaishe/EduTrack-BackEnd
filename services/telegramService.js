@@ -2,13 +2,24 @@ const https = require('https');
 const pool = require('../config/db');
 require('dotenv').config();
 
-const token = process.env.TELEGRAM_BOT_TOKEN;
+/**
+ * Helper to escape HTML special characters for Telegram HTML mode
+ */
+const escapeHTML = (str) => {
+  if (!str) return "";
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+};
 
 /**
  * Generic internal send message helper using direct HTTPS request
- * for maximum compatibility with serverless environments (Vercel)
  */
 const sendMessage = async (chatId, message) => {
+  const token = process.env.TELEGRAM_BOT_TOKEN;
   if (!token || token === 'your_telegram_bot_token_here') {
     console.log("❌ Telegram bot token not configured. Skipping notification.");
     return;
@@ -19,10 +30,13 @@ const sendMessage = async (chatId, message) => {
     return;
   }
 
+  // Sanitize chatId: trim and remove potential accidental quotes
+  const cleanChatId = String(chatId).trim().replace(/['"]/g, '');
+
   const data = JSON.stringify({
-    chat_id: chatId,
+    chat_id: cleanChatId,
     text: message,
-    parse_mode: 'Markdown'
+    parse_mode: 'HTML'
   });
 
   const options = {
@@ -32,34 +46,34 @@ const sendMessage = async (chatId, message) => {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Content-Length': data.length
+      'Content-Length': Buffer.byteLength(data)
     },
     timeout: 8000
   };
 
   return new Promise((resolve) => {
-    console.log(`📨 Attempting to send Telegram message to ${chatId}...`);
+    console.log(`📨 Attempting to send Telegram message to ${cleanChatId}...`);
     const req = https.request(options, (res) => {
       let responseBody = '';
       res.on('data', (chunk) => { responseBody += chunk; });
       res.on('end', () => {
         if (res.statusCode === 200) {
-          console.log(`✅ Telegram notification sent successfully to chat ID: ${chatId}`);
+          console.log(`✅ Telegram notification sent successfully to chat ID: ${cleanChatId}`);
         } else {
-          console.error(`❌ Telegram API error (${res.statusCode}):`, responseBody);
+          console.error(`❌ Telegram API error (${res.statusCode}) for ${cleanChatId}:`, responseBody);
         }
         resolve();
       });
     });
 
     req.on('error', (error) => {
-      console.error(`❌ Telegram Notification Request Error for ${chatId}:`, error.message);
+      console.error(`❌ Telegram Notification Request Error for ${cleanChatId}:`, error.message);
       resolve();
     });
 
     req.on('timeout', () => {
       req.destroy();
-      console.error(`❌ Telegram Notification Timeout for ${chatId}`);
+      console.error(`❌ Telegram Notification Timeout for ${cleanChatId}`);
       resolve();
     });
 
@@ -131,10 +145,10 @@ const sendBroadcast = async (message) => {
  */
 const notifyNewWorkshop = async (groupId, details) => {
   const { moduleName, title, deadline } = details;
-  const message = "*NEW WORKSHOP PUBLISHED*\n\n" +
-                  `*Module:* ${moduleName}\n` +
-                  `*Workshop:* ${title}\n` +
-                  (deadline ? `*Deadline:* ${deadline}\n` : "") +
+  const message = "<b>NEW WORKSHOP PUBLISHED</b>\n\n" +
+                  `<b>Module:</b> ${escapeHTML(moduleName)}\n` +
+                  `<b>Workshop:</b> ${escapeHTML(title)}\n` +
+                  (deadline ? `<b>Deadline:</b> ${escapeHTML(deadline)}\n` : "") +
                   "\nAccess the EduTrack platform for further details.";
   
   await sendToGroup(groupId, message);
@@ -145,9 +159,9 @@ const notifyNewWorkshop = async (groupId, details) => {
  */
 const notifyNewSprint = async (groupId, details) => {
   const { moduleName, title } = details;
-  const message = "*NEW AGILE SPRINT CREATED*\n\n" +
-                  `*Module:* ${moduleName}\n` +
-                  `*Sprint:* ${title}\n\n` +
+  const message = "<b>NEW AGILE SPRINT CREATED</b>\n\n" +
+                  `<b>Module:</b> ${escapeHTML(moduleName)}\n` +
+                  `<b>Sprint:</b> ${escapeHTML(title)}\n\n` +
                   "Log in to the EduTrack platform to begin your tasks.";
 
   await sendToGroup(groupId, message);
@@ -159,13 +173,13 @@ const notifyNewSprint = async (groupId, details) => {
 const sendSubmissionNotification = async (teacherChatId, submissionDetails) => {
   const { studentName, moduleName, assignmentTitle, groupName, submittedAt, optionalMessage } = submissionDetails;
 
-  const message = "*NEW STUDENT SUBMISSION RECEIVED*\n\n" +
-                  `*Student:* ${studentName}\n` +
-                  `*Module:* ${moduleName}\n` +
-                  `*Assignment:* ${assignmentTitle}\n` +
-                  (groupName ? `*Group:* ${groupName}\n` : "") +
-                  `*Date:* ${submittedAt}\n` +
-                  (optionalMessage ? `*Note:* ${optionalMessage}\n` : "") +
+  const message = "<b>NEW STUDENT SUBMISSION RECEIVED</b>\n\n" +
+                  `<b>Student:</b> ${escapeHTML(studentName)}\n` +
+                  `<b>Module:</b> ${escapeHTML(moduleName)}\n` +
+                  `<b>Assignment:</b> ${escapeHTML(assignmentTitle)}\n` +
+                  (groupName ? `<b>Group:</b> ${escapeHTML(groupName)}\n` : "") +
+                  `<b>Date:</b> ${escapeHTML(submittedAt)}\n` +
+                  (optionalMessage ? `<b>Note:</b> ${escapeHTML(optionalMessage)}\n` : "") +
                   "\nPlease review this submission on the Teacher Dashboard.";
 
   if (teacherChatId) {
@@ -184,3 +198,4 @@ module.exports = {
   notifyNewSprint,
   sendSubmissionNotification
 };
+
