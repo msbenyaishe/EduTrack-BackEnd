@@ -130,12 +130,11 @@ const sendBroadcast = async (message) => {
  */
 const notifyNewWorkshop = async (groupId, details) => {
   const { moduleName, title, deadline } = details;
-  const message = `📢 *New Atelier Published*
-📘 *Module:* ${moduleName}
-📌 *Atelier:* ${title}
-${deadline ? `📅 *Deadline:* ${deadline}` : ''}
-
-Please check the platform for details.`;
+  const message = "*NEW WORKSHOP PUBLISHED*\n\n" +
+                  `*Module:* ${moduleName}\n` +
+                  `*Workshop:* ${title}\n` +
+                  (deadline ? `*Deadline:* ${deadline}\n` : "") +
+                  "\nAccess the EduTrack platform for further details.";
   
   await sendToGroup(groupId, message);
 };
@@ -145,11 +144,10 @@ Please check the platform for details.`;
  */
 const notifyNewSprint = async (groupId, details) => {
   const { moduleName, title } = details;
-  const message = `📢 *New Agile Sprint Created*
-📘 *Module:* ${moduleName}
-🏃 *Sprint:* ${title}
-
-Please check the platform to start your tasks.`;
+  const message = "*NEW AGILE SPRINT CREATED*\n\n" +
+                  `*Module:* ${moduleName}\n` +
+                  `*Sprint:* ${title}\n\n` +
+                  "Log in to the EduTrack platform to begin your tasks.";
 
   await sendToGroup(groupId, message);
 };
@@ -160,16 +158,14 @@ Please check the platform to start your tasks.`;
 const sendSubmissionNotification = async (teacherChatId, submissionDetails) => {
   const { studentName, moduleName, assignmentTitle, groupName, submittedAt, optionalMessage } = submissionDetails;
 
-  const message = `📢 *New Student Submission*
-
-👨‍🎓 *Student:* ${studentName}
-📘 *Module:* ${moduleName}
-📂 *Assignment:* ${assignmentTitle}
-${groupName ? `👥 *Group:* ${groupName}` : ''}
-🕒 *Submitted at:* ${submittedAt}
-${optionalMessage ? `📝 *Message:* ${optionalMessage}` : ''}
-
-Please check the teacher dashboard.`;
+  const message = "*NEW STUDENT SUBMISSION RECEIVED*\n\n" +
+                  `*Student:* ${studentName}\n` +
+                  `*Module:* ${moduleName}\n` +
+                  `*Assignment:* ${assignmentTitle}\n` +
+                  (groupName ? `*Group:* ${groupName}\n` : "") +
+                  `*Date:* ${submittedAt}\n` +
+                  (optionalMessage ? `*Note:* ${optionalMessage}\n` : "") +
+                  "\nPlease review this submission on the Teacher Dashboard.";
 
   await sendMessage(teacherChatId || defaultChatId, message);
 };
