@@ -14,6 +14,20 @@ const createWorkshop = async (req, res) => {
       [module_id, group_id, title, description || null, pdf_report || null, repo || null, web_page || null]
     );
     res.status(201).json({ id: result.insertId, title });
+
+    // Trigger Telegram Notification for the Group
+    try {
+      const [moduleInfo] = await pool.query("SELECT title FROM modules WHERE id = ?", [module_id]);
+      if (moduleInfo.length > 0) {
+        await telegramService.notifyNewWorkshop(group_id, {
+          moduleName: moduleInfo[0].title,
+          title: title,
+          deadline: null // No deadline field in current workshops table schema
+        });
+      }
+    } catch (telegramErr) {
+      console.error("Telegram group notification failed (create workshop):", telegramErr.message);
+    }
   } catch (err) {
     res.status(500).json({ message: "Server error", error: err.message });
   }

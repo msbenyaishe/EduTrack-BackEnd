@@ -6,7 +6,7 @@ const ALLOWED_SUBMISSION_TYPES = new Set(["workshop", "sprint", "pfe"]);
 const getProfile = async (req, res) => {
   try {
     const [rows] = await pool.query(
-      "SELECT id, name, email, created_at FROM students WHERE id = ?",
+      "SELECT id, name, email, telegram_chat_id, created_at FROM students WHERE id = ?",
       [req.user.id]
     );
     if (rows.length === 0)
@@ -19,15 +19,15 @@ const getProfile = async (req, res) => {
 
 // PUT /api/students/me
 const updateProfile = async (req, res) => {
-  const { name, email, password } = req.body;
+  const { name, email, password, telegram_chat_id } = req.body;
   try {
-    let query = "UPDATE students SET name = ?, email = ? WHERE id = ?";
-    let params = [name, email, req.user.id];
+    let query = "UPDATE students SET name = ?, email = ?, telegram_chat_id = ? WHERE id = ?";
+    let params = [name, email, telegram_chat_id || null, req.user.id];
 
     if (password) {
       const hashed = await bcrypt.hash(password, 10);
-      query = "UPDATE students SET name = ?, email = ?, password = ? WHERE id = ?";
-      params = [name, email, hashed, req.user.id];
+      query = "UPDATE students SET name = ?, email = ?, password = ?, telegram_chat_id = ? WHERE id = ?";
+      params = [name, email, hashed, telegram_chat_id || null, req.user.id];
     }
 
     await pool.query(query, params);

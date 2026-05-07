@@ -9,10 +9,10 @@ const createGroup = async (req, res) => {
 
   try {
     const [result] = await pool.query(
-      "INSERT INTO groups (teacher_id, name, year) VALUES (?, ?, ?)",
-      [req.user.id, name, year]
+      "INSERT INTO groups (teacher_id, name, year, telegram_chat_id) VALUES (?, ?, ?, ?)",
+      [req.user.id, name, year, req.body.telegram_chat_id || null]
     );
-    res.status(201).json({ id: result.insertId, name, year });
+    res.status(201).json({ id: result.insertId, name, year, telegram_chat_id: req.body.telegram_chat_id || null });
   } catch (err) {
     res.status(500).json({ message: "Server error", error: err.message });
   }
@@ -76,6 +76,10 @@ const updateGroup = async (req, res) => {
   if (invite_expires_at !== undefined) {
     updates.push("invite_expires_at = ?");
     params.push(invite_expires_at === "" || invite_expires_at === null ? null : invite_expires_at);
+  }
+  if (req.body.telegram_chat_id !== undefined) {
+    updates.push("telegram_chat_id = ?");
+    params.push(req.body.telegram_chat_id === "" ? null : req.body.telegram_chat_id);
   }
 
   if (updates.length === 0) {
