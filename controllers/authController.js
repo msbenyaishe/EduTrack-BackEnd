@@ -114,6 +114,7 @@ const login = async (req, res) => {
       name: user.name, 
       email: user.email, 
       personal_image: user.personal_image,
+      telegram_chat_id: user.telegram_chat_id,
       portfolio_link: role === 'student' ? user.portfolio_link : undefined,
       additional_profile_data: role === 'student' ? user.additional_profile_data : undefined
     });
@@ -128,7 +129,7 @@ const me = async (req, res) => {
     const { id, role } = req.user;
     const table = role === "teacher" ? "teachers" : "students";
     const [rows] = await pool.query(
-      `SELECT id, name, email, created_at, personal_image${role === 'student' ? ', portfolio_link, additional_profile_data' : ''} FROM ${table} WHERE id = ?`,
+      `SELECT id, name, email, created_at, personal_image, telegram_chat_id${role === 'student' ? ', portfolio_link, additional_profile_data' : ''} FROM ${table} WHERE id = ?`,
       [id]
     );
     if (rows.length === 0)
@@ -142,7 +143,7 @@ const me = async (req, res) => {
 
 // PUT /api/auth/profile
 const updateProfile = async (req, res) => {
-  const { name, email, portfolio_link, additional_profile_data } = req.body;
+  const { name, email, portfolio_link, additional_profile_data, telegram_chat_id } = req.body;
   const personal_image = req.file ? req.file.path : null;
   const { id, role } = req.user;
   const table = role === "teacher" ? "teachers" : "students";
@@ -179,6 +180,9 @@ const updateProfile = async (req, res) => {
       params.push(portfolio_link || null, additional_profile_data || null);
     }
 
+    query += ", telegram_chat_id = ?";
+    params.push(telegram_chat_id || null);
+
     if (personal_image) {
       query += ", personal_image = ?";
       params.push(personal_image);
@@ -194,6 +198,7 @@ const updateProfile = async (req, res) => {
       name,
       email,
       personal_image: personal_image || undefined,
+      telegram_chat_id,
       portfolio_link: role === 'student' ? portfolio_link : undefined,
       additional_profile_data: role === 'student' ? additional_profile_data : undefined
     });

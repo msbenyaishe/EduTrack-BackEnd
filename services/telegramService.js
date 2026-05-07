@@ -3,7 +3,6 @@ const pool = require('../config/db');
 require('dotenv').config();
 
 const token = process.env.TELEGRAM_BOT_TOKEN;
-const defaultChatId = process.env.DEFAULT_TEACHER_CHAT_ID;
 
 /**
  * Generic internal send message helper using direct HTTPS request
@@ -14,8 +13,9 @@ const sendMessage = async (chatId, message) => {
     console.log("❌ Telegram bot token not configured. Skipping notification.");
     return;
   }
-  if (!chatId || chatId === 'teacher_chat_id_here') {
-    console.log(`⚠️ No valid Chat ID provided (${chatId}). Skipping notification.`);
+  
+  if (!chatId) {
+    console.log("⚠️ No Chat ID provided. Skipping notification.");
     return;
   }
 
@@ -34,7 +34,7 @@ const sendMessage = async (chatId, message) => {
       'Content-Type': 'application/json',
       'Content-Length': data.length
     },
-    timeout: 8000 // 8 seconds timeout
+    timeout: 8000
   };
 
   return new Promise((resolve) => {
@@ -90,8 +90,9 @@ const sendToGroup = async (groupId, message) => {
 const sendToTeacher = async (teacherId, message) => {
   try {
     const [rows] = await pool.query("SELECT telegram_chat_id FROM teachers WHERE id = ?", [teacherId]);
-    const chatId = (rows.length > 0 && rows[0].telegram_chat_id) ? rows[0].telegram_chat_id : defaultChatId;
-    await sendMessage(chatId, message);
+    if (rows.length > 0 && rows[0].telegram_chat_id) {
+      await sendMessage(rows[0].telegram_chat_id, message);
+    }
   } catch (err) {
     console.error("Failed to sendToTeacher:", err.message);
   }
@@ -167,7 +168,11 @@ const sendSubmissionNotification = async (teacherChatId, submissionDetails) => {
                   (optionalMessage ? `*Note:* ${optionalMessage}\n` : "") +
                   "\nPlease review this submission on the Teacher Dashboard.";
 
-  await sendMessage(teacherChatId || defaultChatId, message);
+  if (teacherChatId) {
+    await sendMessage(teacherChatId, message);
+  } else {
+    console.log("⚠️ No teacherChatId provided for submission notification. Skipping.");
+  }
 };
 
 module.exports = {
