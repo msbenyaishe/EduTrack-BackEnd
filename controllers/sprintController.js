@@ -14,8 +14,6 @@ const createSprint = async (req, res) => {
       [module_id, group_id, title || null, description || null,
        pdf_report || null, repo || null, web_page || null]
     );
-    res.status(201).json({ id: result.insertId, title });
-
     // Trigger Telegram Notification for the Group
     try {
       console.log(`🔔 Sprint created. Preparing Telegram notification for group ${group_id}...`);
@@ -31,6 +29,8 @@ const createSprint = async (req, res) => {
     } catch (telegramErr) {
       console.error("❌ Telegram group notification failed (create sprint):", telegramErr.message);
     }
+
+    res.status(201).json({ id: result.insertId, title });
   } catch (err) {
     res.status(500).json({ message: "Server error", error: err.message });
   }

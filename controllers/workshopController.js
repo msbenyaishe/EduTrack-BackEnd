@@ -13,8 +13,6 @@ const createWorkshop = async (req, res) => {
        VALUES (?, ?, ?, ?, ?, ?, ?)`,
       [module_id, group_id, title, description || null, pdf_report || null, repo || null, web_page || null]
     );
-    res.status(201).json({ id: result.insertId, title });
-
     // Trigger Telegram Notification for the Group
     try {
       console.log(`🔔 Workshop created. Preparing Telegram notification for group ${group_id}...`);
@@ -31,6 +29,8 @@ const createWorkshop = async (req, res) => {
     } catch (telegramErr) {
       console.error("❌ Telegram group notification failed (create workshop):", telegramErr.message);
     }
+
+    res.status(201).json({ id: result.insertId, title });
   } catch (err) {
     res.status(500).json({ message: "Server error", error: err.message });
   }
