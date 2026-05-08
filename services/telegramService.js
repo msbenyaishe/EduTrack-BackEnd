@@ -210,6 +210,7 @@ module.exports = {
   notifyNewWorkshop,
   notifyNewSprint,
   notifyNewModule,
-  sendSubmissionNotification
+  sendSubmissionNotification,
+  sendMessage
 };
 

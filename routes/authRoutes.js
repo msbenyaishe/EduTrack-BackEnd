@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const { registerTeacher, registerStudent, login, me, updateProfile, updatePassword } = require("../controllers/authController");
+const { registerTeacher, registerStudent, login, me, updateProfile, updatePassword, testTelegramNotification } = require("../controllers/authController");
 const { authenticate } = require("../middlewares/authMiddleware");
 const upload = require("../middlewares/upload");
 const multer = require("multer");
@@ -33,5 +33,6 @@ router.get("/me", authenticate, me);
 
 router.put("/profile", authenticate, maybeUploadPersonalImage, updateProfile);
 router.put("/password", authenticate, updatePassword);
+router.post("/test-telegram", authenticate, testTelegramNotification);
 
 module.exports = router;

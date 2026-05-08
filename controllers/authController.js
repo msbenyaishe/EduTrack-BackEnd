@@ -235,4 +235,19 @@ const updatePassword = async (req, res) => {
   }
 };
 
-module.exports = { registerTeacher, registerStudent, login, me, updateProfile, updatePassword };
+// POST /api/auth/test-telegram
+const testTelegramNotification = async (req, res) => {
+  const { telegram_chat_id } = req.body;
+  if (!telegram_chat_id) return res.status(400).json({ message: "Telegram Chat ID is required" });
+
+  try {
+    const telegramService = require("../services/telegramService");
+    await telegramService.sendMessage(telegram_chat_id, "<b>EduTrack Test Notification</b>\n\nYour Telegram account has been successfully linked to EduTrack! 🎉");
+    res.json({ message: "Test notification sent! Check your Telegram." });
+  } catch (err) {
+    console.error("TEST TELEGRAM ERROR:", err);
+    res.status(500).json({ message: "Failed to send test notification", error: err.message });
+  }
+};
+
+module.exports = { registerTeacher, registerStudent, login, me, updateProfile, updatePassword, testTelegramNotification };
