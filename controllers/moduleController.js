@@ -3,33 +3,16 @@ const telegramService = require("../services/telegramService");
 
 // POST /api/modules
 const createModule = async (req, res) => {
-  const { title, description, group_id } = req.body;
+  const { title, description, lesson_link } = req.body;
   const logo_url = req.file ? req.file.path : null;
   if (!title) return res.status(400).json({ message: "Title is required" });
 
   try {
     const [result] = await pool.query(
-      "INSERT INTO modules (teacher_id, title, description, logo_url) VALUES (?, ?, ?, ?)",
-      [req.user.id, title, description || null, logo_url]
+      "INSERT INTO modules (teacher_id, title, description, logo_url, lesson_link) VALUES (?, ?, ?, ?, ?)",
+      [req.user.id, title, description || null, logo_url, lesson_link || null]
     );
-
-    const moduleId = result.insertId;
-
-    // If group_id is provided, assign it immediately and notify
-    if (group_id) {
-      await pool.query(
-        "INSERT INTO module_groups (module_id, group_id) VALUES (?, ?)",
-        [moduleId, group_id]
-      );
-
-      try {
-        await telegramService.notifyNewModule(group_id, { title, description });
-      } catch (telegramErr) {
-        console.error("❌ Telegram group notification failed (create module):", telegramErr.message);
-      }
-    }
-
-    res.status(201).json({ id: moduleId, title, description, logo_url });
+    res.status(201).json({ id: result.insertId, title, description, logo_url, lesson_link });
   } catch (err) {
     res.status(500).json({ message: "Server error", error: err.message });
   }
@@ -77,22 +60,22 @@ const getModuleById = async (req, res) => {
 
 // PUT /api/modules/:id
 const updateModule = async (req, res) => {
-  const { title, description } = req.body;
+  const { title, description, lesson_link } = req.body;
   const logo_url = req.file ? req.file.path : undefined;
 
   try {
-    let query = "UPDATE modules SET title = ?, description = ? WHERE id = ? AND teacher_id = ?";
-    let params = [title, description, req.params.id, req.user.id];
+    let query = "UPDATE modules SET title = ?, description = ?, lesson_link = ? WHERE id = ? AND teacher_id = ?";
+    let params = [title, description, lesson_link || null, req.params.id, req.user.id];
 
     if (logo_url !== undefined) {
-      query = "UPDATE modules SET title = ?, description = ?, logo_url = ? WHERE id = ? AND teacher_id = ?";
-      params = [title, description, logo_url, req.params.id, req.user.id];
+      query = "UPDATE modules SET title = ?, description = ?, lesson_link = ?, logo_url = ? WHERE id = ? AND teacher_id = ?";
+      params = [title, description, lesson_link || null, logo_url, req.params.id, req.user.id];
     }
 
     const [result] = await pool.query(query, params);
     if (result.affectedRows === 0)
       return res.status(404).json({ message: "Module not found" });
-    res.json({ message: "Module updated", logo_url });
+    res.json({ message: "Module updated", logo_url, lesson_link });
   } catch (err) {
     res.status(500).json({ message: "Server error", error: err.message });
   }
