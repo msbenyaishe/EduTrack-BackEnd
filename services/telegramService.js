@@ -168,6 +168,19 @@ const notifyNewSprint = async (groupId, details) => {
 };
 
 /**
+ * Specialized: Notify group about a new module
+ */
+const notifyNewModule = async (groupId, details) => {
+  const { title, description } = details;
+  const message = "<b>NEW MODULE ASSIGNED</b>\n\n" +
+                  `<b>Module:</b> ${escapeHTML(title)}\n` +
+                  (description ? `<b>Description:</b> ${escapeHTML(description)}\n` : "") +
+                  "\nAccess the EduTrack platform for further details.";
+
+  await sendToGroup(groupId, message);
+};
+
+/**
  * Specialized: Notify teacher about a student submission
  */
 const sendSubmissionNotification = async (teacherChatId, submissionDetails) => {
@@ -196,6 +209,7 @@ module.exports = {
   sendBroadcast,
   notifyNewWorkshop,
   notifyNewSprint,
+  notifyNewModule,
   sendSubmissionNotification
 };
 

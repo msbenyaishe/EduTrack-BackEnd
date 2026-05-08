@@ -1,4 +1,5 @@
 const pool = require("../config/db");
+const telegramService = require("../services/telegramService");
 
 // POST /api/modules
 const createModule = async (req, res) => {
@@ -118,6 +119,21 @@ const assignModuleToGroup = async (req, res) => {
       "INSERT INTO module_groups (module_id, group_id) VALUES (?, ?)",
       [module_id, group_id]
     );
+
+    // Trigger Telegram Notification for the Group
+    try {
+      console.log(`🔔 Module assigned. Preparing Telegram notification for group ${group_id}...`);
+      const [moduleData] = await pool.query("SELECT title, description FROM modules WHERE id = ?", [module_id]);
+      if (moduleData.length > 0) {
+        await telegramService.notifyNewModule(group_id, {
+          title: moduleData[0].title,
+          description: moduleData[0].description
+        });
+      }
+    } catch (telegramErr) {
+      console.error("❌ Telegram group notification failed (assign module):", telegramErr.message);
+    }
+
     res.status(201).json({ message: "Module assigned to group", id: result.insertId });
   } catch (err) {
     if (err.code === "ER_DUP_ENTRY")
