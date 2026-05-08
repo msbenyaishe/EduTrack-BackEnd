@@ -3,8 +3,13 @@ const cors = require("cors");
 const path = require("path");
 require("dotenv").config();
 const { ensureSubmissionReactionColumns } = require("../utils/ensureSubmissionReactionColumns");
+const { ensureModuleColumns } = require("../utils/ensureModuleColumns");
 
 const app = express();
+
+// ── Early Handlers ─────────────────────────────────────────────────────────────
+app.get("/favicon.ico", (req, res) => res.status(204).end());
+app.get("/favicon.png", (req, res) => res.status(204).end());
 
 // ── Middleware ─────────────────────────────────────────────────────────────────
 app.use(cors());
@@ -13,10 +18,9 @@ app.use(express.json());
 // Serve locally stored uploads when Cloudinary is not used
 app.use("/uploads", express.static(path.join(__dirname, "..", "uploads")));
 
-// Schema check - only run occasionally or manually to avoid overhead on every request
-// ensureSubmissionReactionColumns().catch((err) => {
-//   console.error("Failed to ensure submission reaction columns:", err.message);
-// });
+// Schema check
+ensureSubmissionReactionColumns().catch(() => {});
+ensureModuleColumns().catch(() => {});
 
 // ── Routes ─────────────────────────────────────────────────────────────────────
 const mainRouter = express.Router();
@@ -38,8 +42,6 @@ app.use("/api", mainRouter);
 app.use("/", mainRouter);
 
 // ── Health check ───────────────────────────────────────────────────────────────
-app.get("/favicon.ico", (req, res) => res.status(204).end());
-app.get("/favicon.png", (req, res) => res.status(204).end());
 
 app.get("/health", (req, res) => {
   res.json({ status: "ok", message: "EduTrack API is running 🚀", timestamp: new Date().toISOString() });
