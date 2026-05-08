@@ -3,7 +3,7 @@ const telegramService = require("../services/telegramService");
 
 // POST /api/modules
 const createModule = async (req, res) => {
-  const { title, description } = req.body;
+  const { title, description, group_id } = req.body;
   const logo_url = req.file ? req.file.path : null;
   if (!title) return res.status(400).json({ message: "Title is required" });
 
@@ -12,7 +12,24 @@ const createModule = async (req, res) => {
       "INSERT INTO modules (teacher_id, title, description, logo_url) VALUES (?, ?, ?, ?)",
       [req.user.id, title, description || null, logo_url]
     );
-    res.status(201).json({ id: result.insertId, title, description, logo_url });
+
+    const moduleId = result.insertId;
+
+    // If group_id is provided, assign it immediately and notify
+    if (group_id) {
+      await pool.query(
+        "INSERT INTO module_groups (module_id, group_id) VALUES (?, ?)",
+        [moduleId, group_id]
+      );
+
+      try {
+        await telegramService.notifyNewModule(group_id, { title, description });
+      } catch (telegramErr) {
+        console.error("❌ Telegram group notification failed (create module):", telegramErr.message);
+      }
+    }
+
+    res.status(201).json({ id: moduleId, title, description, logo_url });
   } catch (err) {
     res.status(500).json({ message: "Server error", error: err.message });
   }

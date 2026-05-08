@@ -38,6 +38,9 @@ app.use("/api", mainRouter);
 app.use("/", mainRouter);
 
 // ── Health check ───────────────────────────────────────────────────────────────
+app.get("/favicon.ico", (req, res) => res.status(204).end());
+app.get("/favicon.png", (req, res) => res.status(204).end());
+
 app.get("/health", (req, res) => {
   res.json({ status: "ok", message: "EduTrack API is running 🚀", timestamp: new Date().toISOString() });
 });
